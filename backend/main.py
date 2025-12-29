@@ -21,9 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Načtení Whisper modelu při startu
-print("Loading Whisper model...")
-whisper_model = whisper.load_model("base")
+# Načtení Whisper modelu při startu (tiny model pro nízkou paměť)
+print("Loading Whisper model (tiny)...")
+whisper_model = whisper.load_model("tiny")
 print("Whisper model loaded!")
 
 
