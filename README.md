@@ -2,39 +2,19 @@
 
 Webová aplikace pro detekci textu písní a akordů z audio souborů (MP3/WAV).
 
+**🚀 100% Client-Side - Vše běží v prohlížeči, žádný server není potřeba!**
+
 ## Funkce
 
 - 🎵 Upload MP3 a WAV souborů
-- 📝 Automatický přepis textu (speech-to-text) pomocí OpenAI Whisper
-- 🎸 Detekce základních akordů pomocí librosa
+- 📝 Automatický přepis textu (speech-to-text) pomocí Whisper AI
+- 🎸 Detekce základních akordů pomocí Web Audio API
 - 📄 Generování PDF s textem a akordy
 - ⏱️ Zobrazení časových značek pro synchronizaci
-
-## Struktura projektu
-
-```
-lyrics-chord-detector/
-├── frontend/          # React + Vite frontend (deploy na Netlify)
-└── backend/           # Python FastAPI backend (deploy na Railway/Render)
-```
+- 🔒 Privacy-first - žádná data neopouštějí tvůj počítač
+- 💰 Zcela zdarma - bez serverových nákladů
 
 ## Lokální spuštění
-
-### Backend
-
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate  # Na Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-```
-
-Backend poběží na `http://localhost:8000`
-
-**Poznámka:** První spuštění může trvat déle, protože Whisper stahuje model (~150MB).
-
-### Frontend
 
 ```bash
 cd frontend
@@ -42,52 +22,48 @@ npm install
 npm run dev
 ```
 
-Frontend poběží na `http://localhost:5173`
+Aplikace poběží na `http://localhost:5173`
 
-## Deployment
+**První použití:** Při prvním spuštění se stáhne Whisper model (~40MB), což může trvat chvíli. Model se ukládá do cache prohlížeče pro budoucí použití.
 
-### Frontend (Netlify)
+## Deployment na Netlify
 
-1. Pushni kód na GitHub
-2. Připoj repozitář na Netlify
-3. Nastav build settings:
+### Automatický deploy z GitHubu:
+
+1. **Pushni kód na GitHub** (už máš hotovo ✓)
+
+2. **Připoj repozitář na Netlify:**
+   - Jdi na https://app.netlify.com/
+   - Klikni "Add new site" → "Import an existing project"
+   - Vyber GitHub a autorizuj
+   - Vyber repozitář `lyrics-chord-detector`
+
+3. **Nastav build settings:**
    - Base directory: `frontend`
    - Build command: `npm run build`
    - Publish directory: `frontend/dist`
-4. Přidej environment variable:
-   - `VITE_API_URL` = URL tvého backend API
 
-### Backend (Railway nebo Render)
+4. **Deploy:**
+   - Klikni "Deploy site"
+   - Hotovo! 🎉
 
-**Railway:**
-1. Vytvoř nový projekt na Railway
-2. Připoj GitHub repozitář
-3. Nastav Root Directory na `backend`
-4. Railway automaticky detekuje Python a spustí aplikaci
+### Manuální deploy (alternativa):
 
-**Render:**
-1. Vytvoř nový Web Service
-2. Připoj GitHub repozitář
-3. Nastav:
-   - Root Directory: `backend`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+```bash
+cd frontend
+npm run build
+# Nahraj obsah složky dist/ na Netlify
+```
 
 ## Technologie
 
-### Frontend
-- React 18
-- Vite
-- Tailwind CSS
-- jsPDF
-- Axios
-
-### Backend
-- FastAPI
-- OpenAI Whisper (offline)
-- Librosa
-- NumPy
-- SciPy
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **Transformers.js** - Whisper AI v prohlížeči
+- **Meyda** - Audio feature extraction
+- **Web Audio API** - Chord detection
+- **jsPDF** - PDF generování
 
 ## Použití
 

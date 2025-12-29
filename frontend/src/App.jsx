@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import axios from 'axios'
 import { jsPDF } from 'jspdf'
+import { processAudioFile } from './audioProcessor'
 
 function App() {
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-
-  // Backend API URL - změň pro production
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -26,6 +24,7 @@ function App() {
       setFile(selectedFile)
       setError(null)
       setResult(null)
+      setProgress('')
     }
   }
 
@@ -38,22 +37,18 @@ function App() {
     setLoading(true)
     setError(null)
     setResult(null)
-
-    const formData = new FormData()
-    formData.append('file', file)
+    setProgress('Initializing...')
 
     try {
-      const response = await axios.post(`${API_URL}/process-audio`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 300000, // 5 minut timeout
+      const data = await processAudioFile(file, (progressUpdate) => {
+        setProgress(progressUpdate.message || '')
       })
 
-      setResult(response.data)
+      setResult(data)
+      setProgress('Complete!')
     } catch (err) {
       console.error('Error:', err)
-      setError(err.response?.data?.detail || 'An error occurred while processing the file')
+      setError(err.message || 'An error occurred while processing the file')
     } finally {
       setLoading(false)
     }
@@ -223,6 +218,12 @@ function App() {
                 'Process Audio'
               )}
             </button>
+
+            {loading && progress && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm text-center">{progress}</p>
+              </div>
+            )}
           </div>
 
           {/* Error Display */}
@@ -313,7 +314,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-600 text-sm">
-          <p>Powered by Whisper AI & Librosa</p>
+          <p>Powered by Transformers.js (Whisper AI) - Processing in your browser</p>
         </div>
       </div>
     </div>
