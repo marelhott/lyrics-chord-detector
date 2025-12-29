@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
-import { processAudioFile } from './audioProcessor'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function App() {
   const [file, setFile] = useState(null)
@@ -8,6 +9,16 @@ function App() {
   const [progress, setProgress] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const fileInputRef = useRef(null)
+  const promptRef = useRef(null)
+
+  // Auto-expand prompt textarea
+  useEffect(() => {
+    if (promptRef.current) {
+      promptRef.current.style.height = 'auto'
+      promptRef.current.style.height = `${promptRef.current.scrollHeight}px`
+    }
+  }, [file?.name])
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -16,7 +27,7 @@ function App() {
       // Kontrola typu souboru
       const validTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3']
       if (!validTypes.includes(selectedFile.type)) {
-        setError('Please upload only MP3 or WAV files')
+        setError('Prosím nahrajte pouze MP3 nebo WAV soubory')
         setFile(null)
         return
       }
@@ -28,27 +39,62 @@ function App() {
     }
   }
 
-  const handleUpload = async () => {
+  const handleDrop = (e) => {
+    e.preventDefault()
+    const droppedFile = e.dataTransfer.files[0]
+    if (droppedFile) {
+      const validTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3']
+      if (!validTypes.includes(droppedFile.type)) {
+        setError('Prosím nahrajte pouze MP3 nebo WAV soubory')
+        return
+      }
+      setFile(droppedFile)
+      setError(null)
+      setResult(null)
+      setProgress('')
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleProcess = async () => {
     if (!file) {
-      setError('Please select a file first')
+      setError('Prosím nejdříve vyberte soubor')
       return
     }
 
     setLoading(true)
     setError(null)
     setResult(null)
-    setProgress('Initializing...')
+    setProgress('Nahrávám audio soubor...')
 
     try {
-      const data = await processAudioFile(file, (progressUpdate) => {
-        setProgress(progressUpdate.message || '')
+      const formData = new FormData()
+      formData.append('file', file)
+
+      setProgress('Zpracovávám pomocí AI...')
+
+      const response = await fetch(`${API_URL}/process-audio`, {
+        method: 'POST',
+        body: formData,
       })
 
-      setResult(data)
-      setProgress('Complete!')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Chyba při zpracování')
+      }
+
+      const data = await response.json()
+      setResult({
+        ...data,
+        filename: file.name
+      })
+      setProgress('Hotovo!')
     } catch (err) {
       console.error('Error:', err)
-      setError(err.message || 'An error occurred while processing the file')
+      setError(err.message || 'Nastala chyba při zpracování souboru')
     } finally {
       setLoading(false)
     }
@@ -157,214 +203,269 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 py-12 px-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="flex h-screen overflow-hidden bg-white text-ink font-sans selection:bg-monstera-200">
+      {/* Sidebar */}
+      <div className="hidden lg:flex shrink-0 w-80 border-r border-monstera-200 bg-paper flex-col z-20 h-full relative shadow-sm">
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl mb-4 shadow-2xl">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-            </svg>
+        <div className="border-b border-monstera-200 px-4 py-6 bg-white">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="w-7 h-7 bg-monstera-400 rounded-md flex items-center justify-center shadow-sm">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+            </div>
+            <h1 className="text-sm font-black text-ink uppercase tracking-widest">Lyrics Detector</h1>
           </div>
-          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
-            Lyrics & Chord Detector
-          </h1>
-          <p className="text-purple-200 text-lg max-w-2xl mx-auto">
-            AI-powered music transcription running entirely in your browser
+          <p className="text-[10px] text-monstera-600 font-medium leading-relaxed">
+            AI-powered music transcription & chord detection
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20">
-          {/* Upload Section Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-2">Upload Audio</h2>
-            <p className="text-purple-200">Choose an MP3 or WAV file to analyze</p>
-          </div>
-
-          {/* Upload Section */}
-          <div className="mb-8">
-            <div className="relative">
-              <input
-                type="file"
-                id="audio-upload"
-                accept=".mp3,.wav,audio/mpeg,audio/wav"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="audio-upload"
-                className="flex flex-col items-center justify-center w-full h-48 bg-white/5 border-2 border-dashed border-purple-300/50 rounded-2xl cursor-pointer hover:bg-white/10 transition-all group"
+        {/* Controls */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+          <div className="space-y-5">
+            {/* File Input Section */}
+            <section className="space-y-1">
+              <header className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black text-monstera-800 uppercase tracking-widest">Audio soubor</label>
+              </header>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                className="w-full min-h-[120px] bg-white border border-monstera-200 rounded-md p-4 cursor-pointer hover:border-monstera-400 transition-all flex flex-col items-center justify-center gap-2 shadow-inner"
               >
-                <svg className="w-12 h-12 text-purple-300 mb-3 group-hover:text-purple-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp3,.wav,audio/mpeg,audio/wav"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <svg className="w-8 h-8 text-monstera-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                <span className="text-purple-200 font-medium mb-1">Click to upload audio file</span>
-                <span className="text-purple-300/70 text-sm">MP3 or WAV (max 50MB)</span>
-              </label>
-            </div>
+                <span className="text-[11px] font-bold text-monstera-600">
+                  {file ? file.name : 'Klikněte nebo přetáhněte'}
+                </span>
+                <span className="text-[8px] font-bold text-monstera-400 uppercase tracking-widest">
+                  MP3 nebo WAV
+                </span>
+              </div>
+              {file && (
+                <div className="mt-2 px-3 py-2 bg-monstera-50 border border-monstera-200 rounded-md">
+                  <p className="text-[9px] font-bold text-monstera-600 uppercase tracking-wide">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              )}
+            </section>
 
-            {file && (
-              <div className="mt-4 p-4 bg-green-500/20 border border-green-400/30 rounded-xl backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-white font-medium">{file.name}</p>
-                    <p className="text-green-300/70 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            {/* Progress */}
+            {loading && progress && (
+              <div className="p-3 bg-monstera-50 border border-monstera-200 rounded-md">
+                <div className="flex items-center gap-2">
+                  <div className="animate-pulse">
+                    <div className="w-2 h-2 bg-monstera-400 rounded-full"></div>
                   </div>
+                  <p className="text-[10px] font-bold text-monstera-800 uppercase tracking-wide">{progress}</p>
                 </div>
               </div>
             )}
 
-            <button
-              onClick={handleUpload}
-              disabled={!file || loading}
-              className="mt-6 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-xl
-                font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all
-                disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed
-                flex items-center justify-center gap-2 shadow-lg disabled:shadow-none
-                transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing Audio...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Analyze Audio
-                </>
-              )}
-            </button>
-
-            {loading && progress && (
-              <div className="mt-4 p-4 bg-blue-500/20 border border-blue-400/30 rounded-xl backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  <div className="animate-pulse">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  </div>
-                  <p className="text-blue-200 text-sm font-medium">{progress}</p>
-                </div>
+            {/* Error */}
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-[10px] font-bold text-red-700">{error}</p>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-xl backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-red-200 text-sm">{error}</p>
+        {/* Generate Button */}
+        <div className="p-4 border-t border-monstera-200 bg-paper/80 backdrop-blur-xl">
+          <button
+            onClick={handleProcess}
+            disabled={!file || loading}
+            className="w-full py-3 px-6 bg-gradient-to-br from-monstera-300 to-monstera-400 hover:from-ink hover:to-monstera-900 hover:text-white text-ink font-[900] text-[13px] uppercase tracking-[0.2em] border-2 border-ink rounded-md transition-all shadow-[5px_5px_0_rgba(13,33,23,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-20 disabled:cursor-not-allowed disabled:grayscale"
+          >
+            {loading ? 'Zpracovávám...' : 'Analyzovat'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 h-full overflow-y-auto custom-scrollbar bg-white relative flex flex-col">
+        {/* Mobile Header */}
+        <div className="lg:hidden border-b border-monstera-200 px-4 py-4 bg-white">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-6 h-6 bg-monstera-400 rounded-md flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+            </div>
+            <h1 className="text-xs font-black text-ink uppercase tracking-widest">Lyrics Detector</h1>
+          </div>
+        </div>
+
+        <div className="p-4 lg:px-10 lg:pt-6 lg:pb-10 space-y-6 md:space-y-8 max-w-[1800px] mx-auto w-full">
+          {!result ? (
+            /* Empty State */
+            <div className="py-20 md:py-40 flex flex-col items-center justify-center space-y-6">
+              <div className="w-16 h-16 bg-monstera-50 rounded-md flex items-center justify-center grayscale opacity-20 border border-monstera-200 shadow-inner">
+                <span className="text-3xl">🎵</span>
+              </div>
+              <div className="text-center space-y-2">
+                <span className="text-lg font-bold text-ink block">Zatím žádné výsledky</span>
+                <p className="text-sm text-monstera-600 max-w-md">
+                  Nahrajte MP3 nebo WAV soubor pro detekci textu a akordů
+                </p>
+              </div>
+              {/* Mobile upload */}
+              <div className="lg:hidden w-full max-w-sm space-y-4 mt-8">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className="w-full min-h-[140px] bg-monstera-50 border-2 border-dashed border-monstera-300 rounded-md p-4 cursor-pointer hover:border-monstera-400 transition-all flex flex-col items-center justify-center gap-2"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".mp3,.wav,audio/mpeg,audio/wav"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <svg className="w-10 h-10 text-monstera-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <span className="text-xs font-bold text-monstera-600">
+                    {file ? file.name : 'Klikněte pro nahrání'}
+                  </span>
+                  <span className="text-[9px] font-bold text-monstera-400 uppercase tracking-widest">
+                    MP3 nebo WAV
+                  </span>
+                </div>
+
+                {file && (
+                  <button
+                    onClick={handleProcess}
+                    disabled={loading}
+                    className="w-full py-3 px-6 bg-monstera-400 text-ink font-[900] text-xs uppercase tracking-[0.2em] border-2 border-ink rounded-md transition-all shadow-[4px_4px_0_rgba(13,33,23,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-20 disabled:grayscale"
+                  >
+                    {loading ? 'Zpracovávám...' : 'Analyzovat'}
+                  </button>
+                )}
+
+                {loading && progress && (
+                  <div className="p-3 bg-monstera-50 border border-monstera-200 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-pulse">
+                        <div className="w-2 h-2 bg-monstera-400 rounded-full"></div>
+                      </div>
+                      <p className="text-[10px] font-bold text-monstera-800">{progress}</p>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-[10px] font-bold text-red-700">{error}</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          ) : (
+            /* Results */
+            <div className="space-y-6">
+              {/* Header */}
+              <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-1">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-ink rounded-full"></div>
+                    <h2 className="text-[11px] font-[900] uppercase tracking-[0.3em] text-ink">Výsledky</h2>
+                  </div>
+                </div>
 
-          {/* Results Display */}
-          {result && (
-            <div className="mt-8 space-y-6">
-              <div className="flex items-center justify-between pb-6 border-b border-white/20">
-                <h2 className="text-3xl font-bold text-white">Results</h2>
                 <button
                   onClick={generatePDF}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 px-6 rounded-xl
-                    font-semibold hover:from-green-600 hover:to-emerald-600 transition-all
-                    flex items-center gap-2 shadow-lg transform hover:scale-105"
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-ink font-black text-[9px] uppercase tracking-widest rounded-md border border-monstera-200 hover:border-ink shadow-sm transition-all active:scale-95"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download PDF
+                  Stáhnout PDF
                 </button>
-              </div>
+              </header>
 
               {/* Chords */}
               {result.chords && result.chords.length > 0 && (
-                <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                <article className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
+                  <div className="bg-monstera-50 border-b border-monstera-200 px-3 py-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                     </svg>
-                    Detected Chords
-                  </h3>
-                  <div className="flex flex-wrap gap-3">
+                    <span className="text-[10px] font-black text-monstera-800 uppercase tracking-widest">Detekované akordy</span>
+                  </div>
+                  <div className="p-4 flex flex-wrap gap-2">
                     {result.chords.map((chord, idx) => (
                       <div
                         key={idx}
-                        className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm px-5 py-3 rounded-xl border border-purple-400/30 hover:border-purple-400/60 transition-all"
+                        className="px-3 py-1.5 bg-monstera-50 text-monstera-800 font-bold text-xs rounded border border-monstera-200 hover:bg-monstera-100 transition-all"
                       >
-                        <span className="font-bold text-purple-200 text-lg">{chord.chord}</span>
-                        <span className="text-purple-300/70 text-sm ml-2">
-                          {chord.time}s
-                        </span>
+                        <span className="font-black">{chord.chord}</span>
+                        <span className="text-monstera-400 text-[9px] ml-1.5">{chord.time}s</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </article>
               )}
 
               {/* Lyrics */}
-              <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Lyrics
-                </h3>
-                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-                  <p className="text-purple-100 whitespace-pre-wrap leading-relaxed">
-                    {result.text}
-                  </p>
-                </div>
-              </div>
-
-              {/* Segments with Timeline */}
-              {result.segments && result.segments.length > 0 && (
-                <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {result.text && (
+                <article className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
+                  <div className="bg-monstera-50 border-b border-monstera-200 px-3 py-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Timeline
-                  </h3>
-                  <div className="space-y-3">
+                    <span className="text-[10px] font-black text-monstera-800 uppercase tracking-widest">Text skladby</span>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[13px] font-medium text-ink leading-relaxed whitespace-pre-wrap">
+                      {result.text}
+                    </p>
+                  </div>
+                </article>
+              )}
+
+              {/* Timeline */}
+              {result.segments && result.segments.length > 0 && (
+                <article className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
+                  <div className="bg-monstera-50 border-b border-monstera-200 px-3 py-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-[10px] font-black text-monstera-800 uppercase tracking-widest">Časová osa</span>
+                  </div>
+                  <div className="p-4 space-y-2">
                     {result.segments.map((segment, idx) => (
                       <div
                         key={idx}
-                        className="bg-white/5 p-4 rounded-xl border border-white/10 hover:bg-white/10 transition-all"
+                        className="flex items-start gap-3 p-3 bg-monstera-50 rounded border border-monstera-200 hover:bg-monstera-100 transition-all"
                       >
-                        <div className="flex items-start gap-4">
-                          <span className="text-xs font-mono bg-indigo-500/20 px-3 py-1.5 rounded-lg text-indigo-200 shrink-0 border border-indigo-400/30">
-                            {segment.start.toFixed(1)}s - {segment.end.toFixed(1)}s
-                          </span>
-                          <p className="text-purple-100">{segment.text}</p>
-                        </div>
+                        <span className="text-[9px] font-mono font-bold bg-white px-2 py-1 rounded text-monstera-600 shrink-0 border border-monstera-200">
+                          {segment.start?.toFixed(1) || 0}s - {segment.end?.toFixed(1) || 0}s
+                        </span>
+                        <p className="text-[12px] font-medium text-ink leading-relaxed">{segment.text}</p>
                       </div>
                     ))}
                   </div>
-                </div>
+                </article>
               )}
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-10">
-          <p className="text-purple-300/60 text-sm">
-            Powered by Transformers.js (Whisper AI) - Processing in your browser
-          </p>
-        </div>
-      </div>
+      </main>
     </div>
   )
 }
