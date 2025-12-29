@@ -1,9 +1,9 @@
 import { pipeline, env } from '@xenova/transformers'
 import Meyda from 'meyda'
 
-// Konfigurace pro Transformers.js
-env.allowLocalModels = false // Vždy stahuj z HuggingFace
-env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@latest/dist/'
+// Konfigurace pro Transformers.js - použij CDN
+env.allowLocalModels = false
+env.useBrowserCache = true
 
 // Singleton pro Whisper model
 let whisperPipeline = null
@@ -13,20 +13,27 @@ let whisperPipeline = null
  */
 async function loadWhisperModel() {
   if (!whisperPipeline) {
-    console.log('Loading Whisper model...')
-    whisperPipeline = await pipeline(
-      'automatic-speech-recognition',
-      'Xenova/whisper-tiny.en',
-      {
-        quantized: true,
-        progress_callback: (progress) => {
-          if (progress.status === 'progress') {
-            console.log(`Downloading model: ${Math.round(progress.progress)}%`)
+    console.log('Loading Whisper model from HuggingFace...')
+    try {
+      whisperPipeline = await pipeline(
+        'automatic-speech-recognition',
+        'Xenova/whisper-tiny.en',
+        {
+          quantized: true,
+          progress_callback: (progress) => {
+            if (progress.status === 'progress') {
+              console.log(`Downloading model: ${Math.round(progress.progress || 0)}%`)
+            } else if (progress.status === 'download') {
+              console.log(`Downloading: ${progress.name}`)
+            }
           }
         }
-      }
-    )
-    console.log('Whisper model loaded!')
+      )
+      console.log('Whisper model loaded successfully!')
+    } catch (error) {
+      console.error('Failed to load Whisper model:', error)
+      throw new Error(`Model loading failed: ${error.message}. Please check your internet connection and try again.`)
+    }
   }
   return whisperPipeline
 }
