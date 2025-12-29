@@ -1,32 +1,19 @@
-# Dependencies
-node_modules/
-venv/
+# Python
 __pycache__/
+*.py[cod]
+venv/
+*.egg-info/
 
-# Build outputs
+# Node
+node_modules/
 dist/
 build/
-*.pyc
 
-# Environment variables
+# Env
 .env
-.env.local
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+# Cache
+.cache/
 
 # OS
 .DS_Store
-Thumbs.db
-
-# Audio files
-*.mp3
-*.wav
-temp_*
-
-# Logs
-*.log
-npm-debug.log*
