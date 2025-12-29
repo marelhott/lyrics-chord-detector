@@ -44,23 +44,28 @@ Frontend poběží na `http://localhost:5173`
 
 ## Deployment
 
-### 1. Backend na Railway
+### 1. Backend na Render.com (ZDARMA!)
 
-1. **Vytvoř nový projekt na Railway:**
-   - Jdi na https://railway.app/
-   - Klikni "New Project" → "Deploy from GitHub repo"
-   - Vyber repozitář `lyrics-chord-detector`
+1. **Vytvoř nový Web Service na Render:**
+   - Jdi na https://render.com/
+   - Klikni "New +" → "Web Service"
+   - Připoj GitHub a vyber repozitář `lyrics-chord-detector`
 
-2. **Nastav proměnné:**
-   - Root Directory: `backend`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+2. **Nastav konfiguraci:**
+   - Name: `lyrics-chord-detector-api`
+   - Runtime: `Python 3`
+   - Build Command: `pip install -r backend/requirements.txt`
+   - Start Command: `cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - Instance Type: `Free`
 
 3. **Deploy:**
-   - Railway automaticky deployuje
-   - Zkopíruj URL backendu (např. `https://lyrics-detector.railway.app`)
+   - Klikni "Create Web Service"
+   - Počkej 5-10 minut (první build stahuje Whisper model ~150MB)
+   - Zkopíruj URL (např. `https://lyrics-chord-detector-api.onrender.com`)
 
-### 2. Frontend na Netlify
+**Poznámka:** Free tier Render uspává service po 15 minutách neaktivity. První request po uspání trvá ~30s (cold start).
+
+### 2. Frontend na Netlify (ZDARMA!)
 
 1. **Připoj repozitář na Netlify:**
    - Jdi na https://app.netlify.com/
@@ -73,8 +78,8 @@ Frontend poběží na `http://localhost:5173`
    - Publish directory: `dist`
 
 3. **Nastav environment variables:**
-   - Přidej `VITE_API_URL` s hodnotou URL tvého Railway backendu
-   - Např: `VITE_API_URL=https://lyrics-detector.railway.app`
+   - Přidej `VITE_API_URL` s hodnotou URL tvého Render backendu
+   - Např: `VITE_API_URL=https://lyrics-chord-detector-api.onrender.com`
 
 4. **Deploy:**
    - Klikni "Deploy site"
@@ -85,7 +90,7 @@ Frontend poběží na `http://localhost:5173`
 ### Frontend (.env)
 ```
 VITE_API_URL=http://localhost:8000  # Lokálně
-VITE_API_URL=https://your-backend.railway.app  # Production
+VITE_API_URL=https://your-backend.onrender.com  # Production
 ```
 
 ### Backend
