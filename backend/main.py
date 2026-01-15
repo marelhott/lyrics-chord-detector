@@ -1,186 +1,246 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import whisper
-import librosa
-import numpy as np
 import tempfile
 import os
-from typing import List, Dict
+from typing import Optional
 import warnings
 warnings.filterwarnings('ignore')
 
-app = FastAPI(title="Lyrics & Chord Detector API")
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
-# CORS middleware pro připojení z frontendu
+# Import our new services
+from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenAI API
+from services.chord_detection import get_chord_service
+from services.structure_detection import get_structure_service
+from services.alignment_service import get_alignment_service
+
+app = FastAPI(
+    title="Lyrics & Chord Detector API",
+    description="Professional lyrics and chord detection with song structure recognition",
+    version="2.0.0"
+)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # V produkci nastavit konkrétní domény
+    allow_origins=["*"],  # In production: set specific domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Načtení Whisper modelu při startu (tiny model pro nízkou paměť)
-print("Loading Whisper model (tiny)...")
-whisper_model = whisper.load_model("tiny")
-print("Whisper model loaded!")
+# Initialize services at startup
+print("=" * 60)
+print("🎵 Lyrics & Chord Detector API v2.0 (Fast)")
+print("=" * 60)
 
+# Load services - using OpenAI API for speed
+whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
+chord_service = get_chord_service(use_madmom=False)  # Using librosa
+structure_service = get_structure_service()
+alignment_service = get_alignment_service()
 
-def detect_chords(audio_path: str) -> List[Dict]:
-    """
-    Detekce akordů z audio souboru pomocí librosa.
-    Vrací seznam akordů s jejich časovými značkami.
-    """
-    try:
-        # Načtení audio
-        y, sr = librosa.load(audio_path, sr=22050)
-
-        # Extrakce chroma features (pro detekci výšky tónů)
-        chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=512)
-
-        # Agregace přes malé časové okno
-        hop_length = 512
-        frame_duration = hop_length / sr
-
-        # Definice základních akordů (zjednodušená verze)
-        chord_templates = {
-            'C': [1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
-            'C#': [0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-            'D': [0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-            'D#': [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
-            'E': [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-            'F': [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
-            'F#': [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-            'G': [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            'G#': [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
-            'A': [0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
-            'A#': [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-            'B': [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1],
-            'Cm': [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
-            'Dm': [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-            'Em': [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1],
-            'Fm': [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-            'Gm': [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0],
-            'Am': [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-        }
-
-        chords = []
-
-        # Detekce akordů pro každý frame
-        for i in range(0, chroma.shape[1], 20):  # Každých 20 frames (cca každé 0.5s)
-            if i + 20 > chroma.shape[1]:
-                break
-
-            # Průměrná chroma pro tento úsek
-            avg_chroma = np.mean(chroma[:, i:i+20], axis=1)
-
-            # Najdi nejlepší shodu s akordovými templaty
-            best_match = None
-            best_score = -1
-
-            for chord_name, template in chord_templates.items():
-                # Kosinová podobnost
-                score = np.dot(avg_chroma, template) / (
-                    np.linalg.norm(avg_chroma) * np.linalg.norm(template) + 1e-10
-                )
-
-                if score > best_score:
-                    best_score = score
-                    best_match = chord_name
-
-            # Pouze pokud je dostatečná jistota (threshold)
-            if best_score > 0.5:
-                time = i * frame_duration
-                chords.append({
-                    "chord": best_match,
-                    "time": round(time, 2),
-                    "confidence": round(float(best_score), 2)
-                })
-
-        # Sloučení duplicitních akordů vedle sebe
-        merged_chords = []
-        if chords:
-            current = chords[0]
-            for next_chord in chords[1:]:
-                if next_chord["chord"] == current["chord"]:
-                    # Stejný akord pokračuje
-                    continue
-                else:
-                    merged_chords.append(current)
-                    current = next_chord
-            merged_chords.append(current)
-
-        return merged_chords
-
-    except Exception as e:
-        print(f"Error in chord detection: {str(e)}")
-        return []
+print("✅ All services loaded successfully!")
+print("=" * 60)
 
 
 @app.get("/")
 async def root():
-    return {"message": "Lyrics & Chord Detector API is running!"}
-
-
-@app.post("/process-audio")
-async def process_audio(file: UploadFile = File(...)):
-    """
-    Zpracuje audio soubor (MP3/WAV) a vrátí text + akordy.
-    """
-    # Kontrola typu souboru
-    if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type. Only MP3 and WAV files are supported."
-        )
-
-    # Uložení do dočasného souboru
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-        content = await file.read()
-        temp_file.write(content)
-        temp_path = temp_file.name
-
-    try:
-        # 1. Přepis textu pomocí Whisper
-        print("Transcribing audio...")
-        result = whisper_model.transcribe(temp_path, language="en")
-
-        # Extrakce textu s časovými značkami
-        segments = []
-        for segment in result["segments"]:
-            segments.append({
-                "text": segment["text"].strip(),
-                "start": round(segment["start"], 2),
-                "end": round(segment["end"], 2)
-            })
-
-        full_text = result["text"].strip()
-
-        # 2. Detekce akordů
-        print("Detecting chords...")
-        chords = detect_chords(temp_path)
-
-        return JSONResponse(content={
-            "success": True,
-            "text": full_text,
-            "segments": segments,
-            "chords": chords,
-            "filename": file.filename
-        })
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
-
-    finally:
-        # Smazání dočasného souboru
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+    """API root endpoint."""
+    return {
+        "message": "Lyrics & Chord Detector API v2.0",
+        "status": "running",
+        "features": [
+            "Multi-language support (CS, SK, EN, auto-detect)",
+            "Word-level timestamps",
+            "Advanced chord detection (7th, sus, dim, aug)",
+            "Song structure detection (Intro, Verse, Chorus, etc.)",
+            "Ultimate Guitar style formatting"
+        ]
+    }
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "whisper_model": "base"}
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "whisper_model": whisper_service.model_size,
+        "chord_detection": "madmom" if chord_service.use_madmom else "librosa",
+        "version": "2.0.0"
+    }
+
+
+@app.post("/process-audio")
+async def process_audio(
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(None)
+):
+    """
+    Process audio file - transcribe lyrics and detect chords.
+    
+    Args:
+        file: Audio file (MP3/WAV)
+        language: Language code ("en", "cs", "sk", etc.) or None for auto-detect
+    
+    Returns:
+        JSON with:
+        - text: Full transcribed text
+        - language: Detected/specified language
+        - segments: Segments with word-level timestamps
+        - chords: Detected chords
+        - structure: Song structure (Intro, Verse, Chorus, etc.)
+        - aligned_chords: Chords aligned with specific words
+        - formatted_output: Ultimate Guitar style text
+    """
+    # Validate file type
+    if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only MP3 and WAV files are supported."
+        )
+    
+    # Validate file size (max 50MB)
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+    
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+        content = await file.read()
+        
+        # Check file size
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB"
+            )
+        
+        temp_file.write(content)
+        temp_path = temp_file.name
+    
+    try:
+        print(f"\n{'='*60}")
+        print(f"Processing: {file.filename}")
+        print(f"Size: {len(content) / 1024 / 1024:.2f}MB")
+        print(f"Language: {language or 'auto-detect'}")
+        print(f"{'='*60}\n")
+        
+        # Step 1: Transcribe with Whisper (word-level timestamps)
+        print("Step 1/5: Transcribing audio...")
+        transcription = whisper_service.transcribe(
+            temp_path,
+            language=language
+        )
+        
+        # Step 2: Detect chords
+        print("Step 2/5: Detecting chords...")
+        chords = chord_service.detect_chords(temp_path)
+        
+        # Detect key
+        key = chord_service.detect_key(temp_path)
+        
+        # Step 3: Detect song structure
+        print("Step 3/5: Detecting song structure...")
+        structure = structure_service.detect_structure(
+            temp_path,
+            transcription["segments"],
+            chords
+        )
+        
+        # Step 4: Align chords with lyrics
+        print("Step 4/5: Aligning chords with lyrics...")
+        aligned_chords = alignment_service.align_chords_with_lyrics(
+            transcription["segments"],
+            chords
+        )
+        
+        # Step 5: Format output (Ultimate Guitar style)
+        print("Step 5/5: Formatting output...")
+        
+        # Extract title from filename (remove extension and replace underscores)
+        title = os.path.splitext(file.filename)[0].replace("_", " ").replace("-", " ").title()
+        
+        formatted_output = alignment_service.format_ultimate_guitar_style(
+            structure,
+            aligned_chords,
+            title=title,
+            key=key
+        )
+        
+        print(f"\n✅ Processing complete!")
+        print(f"   - Detected language: {transcription['language']}")
+        print(f"   - Segments: {len(transcription['segments'])}")
+        print(f"   - Words: {len(transcription.get('words', []))}")
+        print(f"   - Chords: {len(chords)}")
+        print(f"   - Structure sections: {len(structure)}")
+        print(f"{'='*60}\n")
+        
+        return JSONResponse(content={
+            "success": True,
+            "filename": file.filename,
+            "text": transcription["text"],
+            "language": transcription["language"],
+            "segments": transcription["segments"],
+            "words": transcription.get("words", []),
+            "chords": chords,
+            "structure": structure,
+            "aligned_chords": aligned_chords,
+            "formatted_output": formatted_output
+        })
+    
+    except Exception as e:
+        print(f"\n❌ Error processing file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Processing error: {str(e)}"
+        )
+    
+    finally:
+        # Clean up temporary file
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+@app.post("/detect-language")
+async def detect_language(file: UploadFile = File(...)):
+    """
+    Detect the language of an audio file.
+    
+    Args:
+        file: Audio file (MP3/WAV)
+    
+    Returns:
+        Detected language code
+    """
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+        content = await file.read()
+        temp_file.write(content)
+        temp_path = temp_file.name
+    
+    try:
+        language = whisper_service.detect_language(temp_path)
+        
+        return JSONResponse(content={
+            "success": True,
+            "language": language,
+            "filename": file.filename
+        })
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Language detection error: {str(e)}"
+        )
+    
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
 
 
 if __name__ == "__main__":

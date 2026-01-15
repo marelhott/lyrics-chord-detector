@@ -1,36 +1,33 @@
-# Lyrics & Chord Detector
+# 🎵 Lyrics & Chord Detector v2.0
 
-Webová aplikace pro detekci textu písní a akordů z audio souborů (MP3/WAV).
+Professional lyrics and chord detection application with AI-powered transcription and song structure recognition.
 
-**🎯 Spolehlivé AI-powered zpracování pomocí Python backendu**
+## ✨ Features
 
-## Funkce
+- 🌍 **Multi-language support** - Czech, Slovak, English, and 99+ languages with auto-detection
+- 🎯 **Word-level precision** - Chords aligned to specific words
+- 📋 **Song structure detection** - Automatic Intro/Verse/Chorus/Bridge/Outro recognition
+- 🎸 **Advanced chord detection** - Supports 7th, sus, dim, aug chords
+- 🎼 **Ultimate Guitar formatting** - Professional output with chords above lyrics
+- 📄 **Multiple export formats** - TXT, PDF, JSON
 
-- 🎵 Upload MP3 a WAV souborů
-- 📝 Automatický přepis textu (speech-to-text) pomocí Whisper AI
-- 🎸 Detekce základních akordů pomocí librosa
-- 📄 Generování PDF s textem a akordy
-- ⏱️ Zobrazení časových značek pro synchronizaci
-- 🎨 Moderní UI inspirované nano-banana-pro-app
+---
 
-## Architektura
+## 🚀 Quick Start
 
-- **Frontend**: React + Vite + Tailwind CSS (Netlify)
-- **Backend**: Python FastAPI + Whisper + Librosa (Railway/Render)
-
-## Lokální spuštění
-
-### Backend (Python)
+### Backend
 
 ```bash
 cd backend
-pip install -r requirements.txt
-python main.py
+pip3 install -r requirements.txt
+python3 main.py
 ```
 
-Backend poběží na `http://localhost:8000`
+Backend runs on `http://localhost:8000`
 
-### Frontend (React)
+**Note:** First startup takes 5-10 minutes to download AI models (~2GB)
+
+### Frontend
 
 ```bash
 cd frontend
@@ -38,127 +35,204 @@ npm install
 npm run dev
 ```
 
-Frontend poběží na `http://localhost:5173`
+Frontend runs on `http://localhost:5173`
 
-**Poznámka:** Backend stahuje Whisper model při prvním spuštění (~150MB).
+---
 
-## Deployment
+## 📖 Full Documentation
 
-### 1. Backend na Render.com (ZDARMA!)
+- **Backend Setup:** [`backend/README.md`](backend/README.md)
+- **Implementation Plan:** See artifacts in `.gemini/antigravity/brain/`
+- **API Documentation:** See backend README
 
-1. **Vytvoř nový Web Service na Render:**
-   - Jdi na https://render.com/
-   - Klikni "New +" → "Web Service"
-   - Připoj GitHub a vyber repozitář `lyrics-chord-detector`
+---
 
-2. **Nastav konfiguraci:**
-   - Name: `lyrics-chord-detector-api`
-   - Runtime: `Python 3`
-   - Build Command: `pip install -r backend/requirements.txt`
-   - Start Command: `cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT`
-   - Instance Type: `Free`
+## 🏗️ Architecture
 
-3. **Deploy:**
-   - Klikni "Create Web Service"
-   - Počkej 5-10 minut (první build stahuje Whisper model ~150MB)
-   - Zkopíruj URL (např. `https://lyrics-chord-detector-api.onrender.com`)
+### Backend (Python FastAPI)
+- **Whisper medium** - High-quality speech-to-text with word timestamps
+- **Madmom** - Deep learning chord detection
+- **Librosa** - Audio analysis for song structure
+- **Multi-language** - 99+ languages supported
 
-**Poznámka:** Free tier Render uspává service po 15 minutách neaktivity. První request po uspání trvá ~30s (cold start).
+### Frontend (React + Vite)
+- **Ultimate Guitar Preview** - Professional lyrics display
+- **Language Selector** - Easy language switching
+- **Export Options** - TXT, PDF, JSON formats
+- **Responsive Design** - Works on desktop and mobile
 
-### 2. Frontend na Netlify (ZDARMA!)
+---
 
-1. **Připoj repozitář na Netlify:**
-   - Jdi na https://app.netlify.com/
-   - Klikni "Add new site" → "Import an existing project"
-   - Vyber GitHub repozitář
+## 🎯 Usage
 
-2. **Nastav build settings:**
-   - Base directory: `frontend`
-   - Build command: `npm run build`
-   - Publish directory: `dist`
+1. **Select Language** - Choose language or use auto-detect
+2. **Upload Audio** - Drag & drop MP3/WAV file (max 50MB)
+3. **Analyze** - Click "Analyzovat" and wait 30-60s
+4. **View Results** - See lyrics with chords in Ultimate Guitar style
+5. **Export** - Download as TXT, PDF, or JSON
 
-3. **Nastav environment variables:**
-   - Přidej `VITE_API_URL` s hodnotou URL tvého Render backendu
-   - Např: `VITE_API_URL=https://lyrics-chord-detector-api.onrender.com`
+---
 
-4. **Deploy:**
-   - Klikni "Deploy site"
-   - Hotovo! 🎉
+## 📊 Example Output
 
-## Environment Variables
-
-### Frontend (.env)
 ```
-VITE_API_URL=http://localhost:8000  # Lokálně
-VITE_API_URL=https://your-backend.onrender.com  # Production
+[Intro]
+G  B  C  Cm
+
+[Verse 1]
+       G                                    B
+When you were here before, couldn't look you in the eyes
+     C                        Cm
+You're just like an angel, your skin makes me cry
+
+[Chorus]
+Cm
+(x3, very short)
+    G                B
+But I'm a creep, I'm a weirdo
+              C                Cm
+What the hell am I doing here? I don't belong here
 ```
 
-### Backend
-Žádné environment variables nejsou potřeba pro základní funkčnost.
+---
 
-## Technologie
+## 🛠️ Tech Stack
 
-### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling (Monstera color palette)
-- **jsPDF** - PDF generování
+**Backend:**
+- FastAPI 0.109.0
+- OpenAI Whisper (medium model)
+- stable-ts 2.14.2
+- Madmom 0.16.1
+- Librosa 0.10.1
 
-### Backend
-- **FastAPI** - Python web framework
-- **Whisper** - OpenAI speech-to-text model
-- **Librosa** - Audio analysis a chord detection
-- **NumPy** - Numerické výpočty
+**Frontend:**
+- React 19.2
+- Vite 7.2.4
+- Tailwind CSS 3.4.19
+- jsPDF 3.0.4
 
-## Použití
+---
 
-1. Otevři aplikaci v prohlížeči
-2. Nahraj MP3 nebo WAV soubor (přetažením nebo kliknutím)
-3. Klikni na "Analyzovat"
-4. Počkej na zpracování (30s - 3min podle délky souboru)
-5. Zobrazí se text, akordy a timeline
-6. Klikni na "Stáhnout PDF" pro export výsledků
+## 🌐 Deployment
 
-## API Endpoints
+### Backend Options
+- **Railway** - Recommended for easy setup
+- **Render** - Free tier available
+- **AWS/GCP** - For production scale
 
-### POST /process-audio
-Zpracuje audio soubor a vrátí text + akordy.
+### Frontend Options
+- **Netlify** - Recommended
+- **Vercel** - Alternative
+- **Cloudflare Pages** - Fast CDN
 
-**Request:**
-- `file`: audio soubor (MP3/WAV)
+See [`implementation_plan.md`](.gemini/antigravity/brain/*/implementation_plan.md) for detailed deployment instructions.
+
+---
+
+## 📝 API Endpoints
+
+### `POST /process-audio`
+Process audio file with lyrics and chord detection.
+
+**Parameters:**
+- `file` - Audio file (MP3/WAV, max 50MB)
+- `language` - Optional language code (cs, sk, en, etc.)
 
 **Response:**
 ```json
 {
   "success": true,
-  "text": "Celý přepsaný text...",
-  "segments": [
-    {
-      "text": "Segment textu",
-      "start": 0.0,
-      "end": 3.5
-    }
-  ],
-  "chords": [
-    {
-      "chord": "Am",
-      "time": 2.5,
-      "confidence": 0.85
-    }
-  ]
+  "text": "Full lyrics...",
+  "language": "en",
+  "structure": [...],
+  "chords": [...],
+  "aligned_chords": [...],
+  "formatted_output": "[Intro]\nG B C..."
 }
 ```
 
-### GET /health
-Kontrola stavu API.
+### `POST /detect-language`
+Detect language without full processing.
 
-## Omezení
+### `GET /health`
+Health check endpoint.
 
-- Kvalita detekce závisí na kvalitě nahrávky
-- Nejlépe funguje s čistým zpěvem a nástroji
-- Detekce akordů je založená na chroma features (základní akordy)
-- Doporučená délka souboru: do 10 minut
+---
 
-## License
+## 🎓 Supported Languages
+
+Auto-detect or manually select from:
+- 🇨🇿 Czech (cs)
+- 🇸🇰 Slovak (sk)
+- 🇬🇧 English (en)
+- 🇩🇪 German (de)
+- 🇫🇷 French (fr)
+- 🇪🇸 Spanish (es)
+- 🇮🇹 Italian (it)
+- 🇵🇱 Polish (pl)
+- And 90+ more languages
+
+---
+
+## ⚙️ Configuration
+
+### Change Whisper Model
+
+Edit `backend/main.py`:
+```python
+whisper_service = get_whisper_service(model_size="large-v3")  # Best quality
+```
+
+Options: `tiny`, `base`, `small`, `medium`, `large`, `large-v3`
+
+### Disable Madmom
+
+Edit `backend/main.py`:
+```python
+chord_service = get_chord_service(use_madmom=False)  # Use librosa fallback
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Backend won't start
+```bash
+# Install system dependencies (macOS)
+brew install ffmpeg
+
+# Install system dependencies (Linux)
+sudo apt-get install ffmpeg libsndfile1
+```
+
+### Frontend build errors
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Processing too slow
+- Use smaller Whisper model (`small` or `tiny`)
+- Disable Madmom chord detection
+- Increase server resources
+
+---
+
+## 📄 License
 
 MIT
+
+---
+
+## 🙏 Credits
+
+- **OpenAI Whisper** - Speech-to-text
+- **Madmom** - Chord detection
+- **Librosa** - Audio analysis
+- **FastAPI** - Backend framework
+- **React** - Frontend framework
+
+---
+
+**Made with ❤️ for musicians**
