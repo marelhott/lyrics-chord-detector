@@ -17,3 +17,7 @@ build/
 
 # OS
 .DS_Store
+
+# Nested repos (prevent accidental commits)
+lyrics-chord-detector/
+lyrics-chord-detector-*/
