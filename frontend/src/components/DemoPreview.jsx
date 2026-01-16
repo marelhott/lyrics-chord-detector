@@ -92,12 +92,13 @@ export default function DemoPreview({ result, onUnlock }) {
             return <span className="font-bold text-monstera-900">{line}</span>
         }
 
-        // Chord lines - blur them
+        // Chord lines - blur them (except first 3)
         if (isChordLine(line)) {
             const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
             const parts = []
             let lastIndex = 0
             let match
+            let chordCount = 0
 
             while ((match = chordRegex.exec(line)) !== null) {
                 // Add spacing before chord
@@ -109,13 +110,14 @@ export default function DemoPreview({ result, onUnlock }) {
                     )
                 }
 
-                // Add blurred chord
+                // Add chord (clear or blurred based on index)
                 parts.push(
                     <span key={`chord-${idx}-${match.index}`}>
-                        {renderBlurredChord(match[0])}
+                        {renderBlurredChord(match[0], chordCount)}
                     </span>
                 )
 
+                chordCount++
                 lastIndex = match.index + match[0].length
             }
 
