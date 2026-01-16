@@ -19,14 +19,31 @@ export default function DemoPreview({ result, onUnlock }) {
 
     const lines = result.formatted_output.split('\n')
 
-    // Render chord with blur effect
-    const renderBlurredChord = (chord) => {
+    // Render chord with blur effect (except first 3)
+    const renderBlurredChord = (chord, chordIndex = 999) => {
         const isFundamental = isFundamentalChord(chord)
+
+        // Show first 3 chords clearly
+        if (chordIndex < 3) {
+            return (
+                <span
+                    className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
+                            ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                            : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                        }`}
+                    style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
+                >
+                    {chord}
+                </span>
+            )
+        }
+
+        // Blur remaining chords
         return (
             <span
                 className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border blur-sm opacity-60 select-none ${isFundamental
-                    ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                    : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                        ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
                     }`}
                 style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
             >
