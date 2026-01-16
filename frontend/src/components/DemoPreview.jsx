@@ -2,7 +2,7 @@
  * Demo Preview Component
  * Shows blurred/blocked preview with unlock button
  */
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 
 // Helper to check if chord is fundamental
 function isFundamentalChord(chord) {
@@ -12,7 +12,8 @@ function isFundamentalChord(chord) {
 
 export default function DemoPreview({ result, onUnlock }) {
     const [fontSize, setFontSize] = useState('text-sm')
-    const totalChordsSeen = useRef(0)
+    // Track global chord index across entire song
+    const chordIndexRef = useRef(0)
 
     if (!result || !result.formatted_output) {
         return null
@@ -20,69 +21,8 @@ export default function DemoPreview({ result, onUnlock }) {
 
     const lines = result.formatted_output.split('\n')
 
-    // Render chord with blur effect (except first 3)
-    const renderBlurredChord = (chord, chordIndex = 999) => {
-        const isFundamental = isFundamentalChord(chord)
-
-        // Show first 3 chords clearly
-        if (chordIndex < 3) {
-            return (
-                <span
-                    className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
-                        ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
-                        }`}
-                    style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
-                >
-                    {chord}
-                </span>
-            )
-        }
-
-        // Blur remaining chords
-        return (
-            <span
-                className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border blur-sm opacity-60 select-none ${isFundamental
-                    ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                    : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
-                    }`}
-                style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
-            >
-                {chord}
-            </span>
-        )
-    }
-
-    // Render lyrics - show first verse fully, then block rest
-    const renderBlockedLyrics = (text, lineIndex) => {
-        if (!text || text.trim().startsWith('[') || text.trim() === '') {
-            return <span>{text}</span>
-        }
-
-        // Show first 6 lines of lyrics completely (roughly first verse)
-        if (lineIndex < 15) {
-            return <span>{text}</span>
-        }
-
-        // After first verse, show first 2 words then block
-        const words = text.split(' ')
-        if (words.length <= 2) {
-            return <span>{text}</span>
-        }
-
-        return (
-            <>
-                {words.slice(0, 2).join(' ')}
-                {' '}
-                <span className="inline-block bg-black text-black select-none rounded px-1">
-                    {words.slice(2).join(' ')}
-                </span>
-            </>
-        )
-    }
-
     // Check if line contains chords
-    const isChordLine = (line) => {
+    const isChordLine = useCallback((line) => {
         if (line.startsWith('Title:') || line.startsWith('Key:') || line.trim().startsWith('[')) {
             return false
         }
@@ -93,21 +33,21 @@ export default function DemoPreview({ result, onUnlock }) {
         const chordPattern = /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?$/
         const chordCount = tokens.filter(t => chordPattern.test(t)).length
         return chordCount > 0 && chordCount / tokens.length > 0.5
-    }
+    }, [])
 
-    // Render a single line
-    const renderLine = (line, idx) => {
+    // Render a single line with proper global chord counting
+    const renderLine = useCallback((line, idx) => {
         // Title and Key - show normally
         if (line.startsWith('Title:')) {
-            return <span className="font-bold text-monstera-900 text-lg">{line}</span>
+            return <span key={idx} className="font-bold text-monstera-900 text-lg">{line}</span>
         }
         if (line.startsWith('Key:')) {
-            return <span className="font-semibold text-monstera-700">{line}</span>
+            return <span key={idx} className="font-semibold text-monstera-700">{line}</span>
         }
 
         // Section headers - show normally
         if (line.trim().startsWith('[')) {
-            return <span className="font-bold text-monstera-900">{line}</span>
+            return <span key={idx} className="font-bold text-monstera-900">{line}</span>
         }
 
         // Chord lines - show first 3 chords clearly GLOBALLY
@@ -127,15 +67,26 @@ export default function DemoPreview({ result, onUnlock }) {
                     )
                 }
 
-                // Add chord (use global counter from ref)
-                const currentChordIndex = totalChordsSeen.current
+                // Get current global chord index and increment for next chord
+                const currentChordIndex = chordIndexRef.current
+                const isFundamental = isFundamentalChord(match[0])
+                const isVisible = currentChordIndex < 3
+
+                // Render chord with appropriate styling
                 parts.push(
-                    <span key={`chord-${idx}-${match.index}`}>
-                        {renderBlurredChord(match[0], currentChordIndex)}
+                    <span
+                        key={`chord-${idx}-${match.index}`}
+                        className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
+                            ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                            : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                            } ${!isVisible ? 'blur-sm opacity-60 select-none' : ''}`}
+                        style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
+                    >
+                        {match[0]}
                     </span>
                 )
 
-                totalChordsSeen.current++
+                chordIndexRef.current++
                 lastIndex = match.index + match[0].length
             }
 
@@ -153,6 +104,34 @@ export default function DemoPreview({ result, onUnlock }) {
 
         // Lyrics lines - block after first verse
         return renderBlockedLyrics(line, idx)
+    }, [fontSize, isChordLine])
+
+    // Render lyrics - show first verse fully, then block rest
+    const renderBlockedLyrics = (text, lineIndex) => {
+        if (!text || text.trim().startsWith('[') || text.trim() === '') {
+            return <span key={lineIndex}>{text}</span>
+        }
+
+        // Show first 6 lines of lyrics completely (roughly first verse)
+        if (lineIndex < 15) {
+            return <span key={lineIndex}>{text}</span>
+        }
+
+        // After first verse, show first 2 words then block
+        const words = text.split(' ')
+        if (words.length <= 2) {
+            return <span key={lineIndex}>{text}</span>
+        }
+
+        return (
+            <span key={lineIndex}>
+                {words.slice(0, 2).join(' ')}
+                {' '}
+                <span className="inline-block bg-black text-black select-none rounded px-1">
+                    {words.slice(2).join(' ')}
+                </span>
+            </span>
+        )
     }
 
     return (
@@ -173,7 +152,11 @@ export default function DemoPreview({ result, onUnlock }) {
                     <span className="text-[9px] font-bold text-monstera-600 uppercase tracking-wide">Velikost:</span>
                     <select
                         value={fontSize}
-                        onChange={(e) => setFontSize(e.target.value)}
+                        onChange={(e) => {
+                            // Reset chord index counter when font changes
+                            chordIndexRef.current = 0
+                            setFontSize(e.target.value)
+                        }}
                         className="text-[10px] font-bold px-2 py-1 border border-monstera-200 rounded bg-white text-monstera-800"
                     >
                         <option value="text-xs">Malá</option>
@@ -186,22 +169,11 @@ export default function DemoPreview({ result, onUnlock }) {
             {/* Content with blur/block effects */}
             <div className="p-6 overflow-x-auto">
                 <div className={`font-mono ${fontSize} leading-relaxed text-ink`}>
-                    {(() => {
-                        let globalChordCount = 0
-                        return lines.map((line, idx) => {
-                            const lineContent = renderLine(line, idx, globalChordCount)
-                            // Count chords in this line to update global counter
-                            const chordMatches = line.match(/[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g)
-                            if (chordMatches) {
-                                globalChordCount += chordMatches.length
-                            }
-                            return (
-                                <div key={idx} className="whitespace-pre min-h-[1.5em]">
-                                    {lineContent}
-                                </div>
-                            )
-                        })
-                    })()}
+                    {lines.map((line, idx) => (
+                        <div key={idx} className="whitespace-pre min-h-[1.5em]">
+                            {renderLine(line, idx)}
+                        </div>
+                    ))}
                 </div>
             </div>
 
