@@ -28,8 +28,8 @@ export default function DemoPreview({ result, onUnlock }) {
             return (
                 <span
                     className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
-                            ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                            : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                        ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
                         }`}
                     style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
                 >
@@ -42,8 +42,8 @@ export default function DemoPreview({ result, onUnlock }) {
         return (
             <span
                 className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border blur-sm opacity-60 select-none ${isFundamental
-                        ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                    ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                    : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
                     }`}
                 style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
             >
@@ -95,7 +95,7 @@ export default function DemoPreview({ result, onUnlock }) {
     }
 
     // Render a single line
-    const renderLine = (line, idx) => {
+    const renderLine = (line, idx, startChordCount = 0) => {
         // Title and Key - show normally
         if (line.startsWith('Title:')) {
             return <span className="font-bold text-monstera-900 text-lg">{line}</span>
@@ -109,13 +109,13 @@ export default function DemoPreview({ result, onUnlock }) {
             return <span className="font-bold text-monstera-900">{line}</span>
         }
 
-        // Chord lines - blur them (except first 3)
+        // Chord lines - blur them (except first 3 globally)
         if (isChordLine(line)) {
             const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
             const parts = []
             let lastIndex = 0
             let match
-            let chordCount = 0
+            let chordCount = startChordCount
 
             while ((match = chordRegex.exec(line)) !== null) {
                 // Add spacing before chord
@@ -127,7 +127,7 @@ export default function DemoPreview({ result, onUnlock }) {
                     )
                 }
 
-                // Add chord (clear or blurred based on index)
+                // Add chord (clear or blurred based on global index)
                 parts.push(
                     <span key={`chord-${idx}-${match.index}`}>
                         {renderBlurredChord(match[0], chordCount)}
@@ -185,11 +185,22 @@ export default function DemoPreview({ result, onUnlock }) {
             {/* Content with blur/block effects */}
             <div className="p-6 overflow-x-auto">
                 <div className={`font-mono ${fontSize} leading-relaxed text-ink`}>
-                    {lines.map((line, idx) => (
-                        <div key={idx} className="whitespace-pre min-h-[1.5em]">
-                            {renderLine(line, idx)}
-                        </div>
-                    ))}
+                    {(() => {
+                        let globalChordCount = 0
+                        return lines.map((line, idx) => {
+                            const lineContent = renderLine(line, idx, globalChordCount)
+                            // Count chords in this line to update global counter
+                            const chordMatches = line.match(/[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g)
+                            if (chordMatches) {
+                                globalChordCount += chordMatches.length
+                            }
+                            return (
+                                <div key={idx} className="whitespace-pre min-h-[1.5em]">
+                                    {lineContent}
+                                </div>
+                            )
+                        })
+                    })()}
                 </div>
             </div>
 
