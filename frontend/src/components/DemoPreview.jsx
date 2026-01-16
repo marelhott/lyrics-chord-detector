@@ -2,7 +2,7 @@
  * Demo Preview Component
  * Shows blurred/blocked preview with unlock button
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 // Helper to check if chord is fundamental
 function isFundamentalChord(chord) {
@@ -12,6 +12,7 @@ function isFundamentalChord(chord) {
 
 export default function DemoPreview({ result, onUnlock }) {
     const [fontSize, setFontSize] = useState('text-sm')
+    const totalChordsSeen = useRef(0)
 
     if (!result || !result.formatted_output) {
         return null
@@ -109,13 +110,12 @@ export default function DemoPreview({ result, onUnlock }) {
             return <span className="font-bold text-monstera-900">{line}</span>
         }
 
-        // Chord lines - show first 3 chords clearly per line
+        // Chord lines - show first 3 chords clearly GLOBALLY
         if (isChordLine(line)) {
             const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
             const parts = []
             let lastIndex = 0
             let match
-            let chordCount = 0
 
             while ((match = chordRegex.exec(line)) !== null) {
                 // Add spacing before chord
@@ -127,14 +127,15 @@ export default function DemoPreview({ result, onUnlock }) {
                     )
                 }
 
-                // Add chord (first 3 clear, rest blurred)
+                // Add chord (use global counter from ref)
+                const currentChordIndex = totalChordsSeen.current
                 parts.push(
                     <span key={`chord-${idx}-${match.index}`}>
-                        {renderBlurredChord(match[0], chordCount)}
+                        {renderBlurredChord(match[0], currentChordIndex)}
                     </span>
                 )
 
-                chordCount++
+                totalChordsSeen.current++
                 lastIndex = match.index + match[0].length
             }
 
