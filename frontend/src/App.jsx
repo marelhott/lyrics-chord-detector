@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import UltimateGuitarPreview from './components/UltimateGuitarPreview'
+import DemoPreview from './components/DemoPreview'
 import LanguageSelector from './components/LanguageSelector'
 import ExportOptions from './components/ExportOptions'
 
@@ -86,9 +87,9 @@ function App() {
         formData.append('language', language)
       }
 
-      setProgress('Zpracovávám pomocí AI (může trvat 30-60s)...')
+      setProgress('Zpracovávám pomocí AI (demo - 30s)...')
 
-      const response = await fetch(`${API_URL}/process-audio`, {
+      const response = await fetch(`${API_URL}/process-demo`, {
         method: 'POST',
         body: formData,
       })
@@ -110,6 +111,16 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleUnlock = async () => {
+    if (!result || !result.audio_hash) {
+      setError('Chyba: Nelze odemknout bez výsledku')
+      return
+    }
+
+    // TODO: Implement Stripe checkout
+    alert('Stripe integrace bude přidána v další fázi.\nPro nyní: Demo mode funguje!')
   }
 
   return (
@@ -353,8 +364,12 @@ function App() {
                 <ExportOptions result={result} />
               </header>
 
-              {/* Ultimate Guitar Preview */}
-              <UltimateGuitarPreview result={result} />
+              {/* Preview - Demo or Full */}
+              {result.is_demo ? (
+                <DemoPreview result={result} onUnlock={handleUnlock} />
+              ) : (
+                <UltimateGuitarPreview result={result} />
+              )}
             </div>
           )}
         </div>
