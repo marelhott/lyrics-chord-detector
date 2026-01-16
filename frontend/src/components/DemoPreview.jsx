@@ -25,8 +25,8 @@ export default function DemoPreview({ result, onUnlock }) {
         return (
             <span
                 className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border blur-sm opacity-60 select-none ${isFundamental
-                        ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                    ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
+                    : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
                     }`}
                 style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
             >
@@ -35,12 +35,18 @@ export default function DemoPreview({ result, onUnlock }) {
         )
     }
 
-    // Render lyrics with first 2 words visible, rest blocked
-    const renderBlockedLyrics = (text) => {
+    // Render lyrics - show first verse fully, then block rest
+    const renderBlockedLyrics = (text, lineIndex) => {
         if (!text || text.trim().startsWith('[') || text.trim() === '') {
             return <span>{text}</span>
         }
 
+        // Show first 6 lines of lyrics completely (roughly first verse)
+        if (lineIndex < 15) {
+            return <span>{text}</span>
+        }
+
+        // After first verse, show first 2 words then block
         const words = text.split(' ')
         if (words.length <= 2) {
             return <span>{text}</span>
@@ -125,8 +131,8 @@ export default function DemoPreview({ result, onUnlock }) {
             return <>{parts}</>
         }
 
-        // Lyrics lines - block most words
-        return renderBlockedLyrics(line)
+        // Lyrics lines - block after first verse
+        return renderBlockedLyrics(line, idx)
     }
 
     return (
