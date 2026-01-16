@@ -16,6 +16,7 @@ from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenA
 from services.chord_detection import get_chord_service
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
+from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
 
 app = FastAPI(
     title="Lyrics & Chord Detector API",
@@ -72,6 +73,129 @@ async def health_check():
         "chord_detection": "madmom" if chord_service.use_madmom else "librosa",
         "version": "2.0.0"
     }
+
+
+@app.post("/process-demo")
+async def process_demo(
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(None)
+):
+    """
+    Process first 30 seconds of audio for FREE preview.
+    
+    Args:
+        file: Audio file (MP3/WAV)
+        language: Language code or None for auto-detect
+    
+    Returns:
+        JSON with demo results (is_demo: true, limited output)
+    """
+    # Validate file type
+    if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only MP3 and WAV files are supported."
+        )
+    
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+        content = await file.read()
+        
+        # Check file size (max 50MB)
+        MAX_FILE_SIZE = 50 * 1024 * 1024
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB"
+            )
+        
+        temp_file.write(content)
+        temp_path = temp_file.name
+    
+    try:
+        print(f"\n{'='*60}")
+        print(f"Processing DEMO: {file.filename}")
+        print(f"{'='*60}\n")
+        
+        # Calculate audio hash for duplicate detection
+        audio_hash = calculate_audio_hash(temp_path)
+        print(f"Audio hash: {audio_hash[:16]}...")
+        
+        # Trim to 30 seconds
+        print("Trimming to 30 seconds...")
+        trimmed_path = trim_audio_to_duration(temp_path, duration_seconds=30)
+        
+        # Process trimmed audio
+        print("Step 1/5: Transcribing audio (30s)...")
+        transcription = whisper_service.transcribe(trimmed_path, language=language)
+        
+        print("Step 2/5: Detecting chords...")
+        chords = chord_service.detect_chords(trimmed_path)
+        
+        # Detect key
+        key = chord_service.detect_key(trimmed_path)
+        
+        print("Step 3/5: Detecting song structure...")
+        structure = structure_service.detect_structure(
+            trimmed_path,
+            transcription["segments"],
+            chords
+        )
+        
+        print("Step 4/5: Aligning chords with lyrics...")
+        aligned_chords = alignment_service.align_chords_with_lyrics(
+            transcription["segments"],
+            chords
+        )
+        
+        print("Step 5/5: Formatting output...")
+        title = os.path.splitext(file.filename)[0].replace("_", " ").replace("-", " ").title()
+        
+        formatted_output = alignment_service.format_ultimate_guitar_style(
+            structure,
+            aligned_chords,
+            title=title,
+            key=key
+        )
+        
+        print(f"\n✅ Demo processing complete!")
+        print(f"{'='*60}\n")
+        
+        # Clean up trimmed file
+        if os.path.exists(trimmed_path):
+            os.unlink(trimmed_path)
+        
+        return JSONResponse(content={
+            "success": True,
+            "is_demo": True,
+            "audio_hash": audio_hash,
+            "filename": file.filename,
+            "text": transcription["text"],
+            "language": transcription["language"],
+            "segments": transcription["segments"],
+            "chords": chords,
+            "structure": structure,
+            "aligned_chords": aligned_chords,
+            "formatted_output": formatted_output,
+            "title": title,
+            "key": key,
+            "demo_duration": 30
+        })
+    
+    except Exception as e:
+        print(f"\n❌ Error processing demo: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Processing error: {str(e)}"
+        )
+    
+    finally:
+        # Clean up original temp file
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
 
 
 @app.post("/process-audio")
