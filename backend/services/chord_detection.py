@@ -37,25 +37,67 @@ class ChordDetectionService:
             print("Using librosa-based chord detection (fallback)")
             self.processor = None
     
-    def detect_chords(self, audio_path: str) -> List[Dict]:
+    def detect_chords(self, audio_path: str, quality: str = "free") -> List[Dict]:
         """
-        Detect chords from audio file.
+        Detect chords from audio file with quality tier support.
         
         Args:
             audio_path: Path to audio file
+            quality: Detection quality tier:
+                - 'free': Madmom (good accuracy, ~75-80%)
+                - 'premium': Music.ai + Demucs (best accuracy, ~85-90%)
         
         Returns:
             List of chord detections:
             [
                 {"chord": "C", "time": 0.5, "confidence": 0.85},
-                {"chord": "Am", "time": 2.3, "confidence": 0.92},
+                {"chord": "Am", "time": 2.0, "confidence": 0.90},
                 ...
             ]
         """
-        if self.use_madmom:
+        if quality == "premium":
+            return self._detect_premium(audio_path)
+        elif self.use_madmom:
             return self._detect_with_madmom(audio_path)
         else:
             return self._detect_with_librosa(audio_path)
+    
+    def _detect_premium(self, audio_path: str) -> List[Dict]:
+        """Detect chords using premium tier (Music.ai + Demucs)."""
+        try:
+            from services.music_ai_service import get_music_ai_service
+            from services.demucs_service import get_demucs_service
+            import os
+            
+            # Get services
+            music_ai = get_music_ai_service()
+            demucs = get_demucs_service()
+            
+            if not music_ai or not demucs:
+                print("Premium services not available, falling back to Madmom")
+                return self._detect_with_madmom(audio_path)
+            
+            # Step 1: Separate guitar using Demucs
+            print("🎸 Separating guitar track...")
+            guitar_path = demucs.separate_guitar(audio_path)
+            
+            try:
+                # Step 2: Detect chords on isolated guitar
+                print("🎵 Detecting chords with Music.ai...")
+                chords = music_ai.detect_chords_premium(guitar_path, "complex_pop")
+                
+                return chords
+                
+            finally:
+                # Cleanup separated audio
+                if os.path.exists(guitar_path):
+                    os.unlink(guitar_path)
+                    
+        except Exception as e:
+            print(f"Premium detection failed: {str(e)}")
+            print("Falling back to Madmom...")
+            return self._detect_with_madmom(audio_path)
+
     
     def _detect_with_madmom(self, audio_path: str) -> List[Dict]:
         """Detect chords using Madmom (more accurate)."""

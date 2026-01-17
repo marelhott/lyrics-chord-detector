@@ -79,18 +79,28 @@ async def health_check():
 @app.post("/process-demo")
 async def process_demo(
     file: UploadFile = File(...),
-    language: Optional[str] = Form(None)
+    language: Optional[str] = Form(None),
+    quality: str = Form("free")  # 'free' or 'premium'
 ):
     """
-    Process first 30 seconds of audio for FREE preview.
+    Process audio file (demo mode - first 30 seconds only).
     
     Args:
-        file: Audio file (MP3/WAV)
-        language: Language code or None for auto-detect
+        file: Audio file (MP3, WAV, etc.)
+        language: Optional language code (e.g., 'cs', 'en')
+        quality: Chord detection quality ('free' or 'premium')
     
     Returns:
-        JSON with demo results (is_demo: true, limited output)
+        JSON with demo results (is_demo: true)
     """
+    # Validate quality
+    if quality not in ["free", "premium"]:
+        raise HTTPException(status_code=400, detail="Invalid quality. Use 'free' or 'premium'")
+    
+    print(f"\n{'='*60}")
+    print(f"📥 Processing DEMO (30s) - Quality: {quality.upper()}")
+    print(f"{'='*60}")
+    
     # Validate file type
     if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
         raise HTTPException(
