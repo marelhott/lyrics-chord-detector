@@ -9,6 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 function App() {
   const [file, setFile] = useState(null)
   const [language, setLanguage] = useState(null) // null = auto-detect
+  const [chordQuality, setChordQuality] = useState('free') // 'free' or 'premium'
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [result, setResult] = useState(null)
@@ -71,14 +72,14 @@ function App() {
 
   const handleProcess = async () => {
     if (!file) {
-      setError('Prosím nejdříve vyberte soubor')
+      setError('Nejprve vyberte soubor')
       return
     }
 
     setLoading(true)
     setError(null)
     setResult(null)
-    setProgress('Nahrávám audio soubor...')
+    setProgress('Nahrávám soubor...')
 
     try {
       const formData = new FormData()
@@ -86,6 +87,7 @@ function App() {
       if (language) {
         formData.append('language', language)
       }
+      formData.append('quality', chordQuality)
 
       setProgress('Zpracovávám pomocí AI (demo - 30s)...')
 
@@ -101,13 +103,17 @@ function App() {
 
       const data = await response.json()
 
-      console.log('API Response:', data) // Debug
+      if (data.is_demo) {
+        setResult({ ...data, isDemoMode: true })
+      } else {
+        setResult(data)
+      }
 
-      setResult(data)
-      setProgress('Hotovo!')
+      setProgress('')
     } catch (err) {
       console.error('Error:', err)
-      setError(err.message || 'Nastala chyba při zpracování souboru')
+      setError(err.message || 'Nastala chyba při zpracování')
+      setProgress('')
     } finally {
       setLoading(false)
     }
