@@ -1,4 +1,4 @@
-# Minimal requirements for Railway deployment
+# Minimal requirements for Railway deployment with Essentia
 # Core API
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
@@ -7,6 +7,7 @@ python-multipart==0.0.6
 # Audio processing (essential)
 numpy==1.26.3
 scipy==1.11.4
+essentia-tensorflow==2.1b6.dev1110
 librosa==0.10.1
 pydub==0.25.1
 numba==0.58.1
@@ -18,6 +19,7 @@ stable-ts==2.14.2
 
 # Utilities
 python-dotenv==1.0.0
+httpx==0.27.0
 
 # NOTE: Madmom and Demucs removed for initial deployment
 # Will add after successful first deploy:

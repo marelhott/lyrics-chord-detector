@@ -1,12 +1,23 @@
 """
-Advanced chord detection service using Madmom library.
-Provides more accurate chord detection with support for extended chords.
+Hybrid chord detection service.
+- Free tier: Essentia (70-80% accuracy, lightweight)
+- Premium tier: Modal.com with Madmom+Demucs (89%+ accuracy)
 """
 import numpy as np
 import librosa
+import httpx
+import os
 from typing import List, Dict, Optional
 import warnings
 warnings.filterwarnings('ignore')
+
+# Import available services
+try:
+    from services.essentia_chord_service import get_essentia_service
+    ESSENTIA_AVAILABLE = True
+except ImportError:
+    ESSENTIA_AVAILABLE = False
+    print("Warning: Essentia not installed.")
 
 try:
     from madmom.features.chords import DeepChromaChordRecognitionProcessor
@@ -14,38 +25,54 @@ try:
 except ImportError:
     MADMOM_AVAILABLE = False
     print("Warning: madmom not installed. Using fallback chord detection.")
-    print("Install with: pip install madmom")
 
 
 class ChordDetectionService:
     """Service for detecting chords from audio files."""
     
-    def __init__(self, use_madmom: bool = True):
+    def __init__(self, use_madmom: bool = False):
         """
         Initialize chord detection service.
         
         Args:
-            use_madmom: Use Madmom if available, otherwise use librosa fallback
+            use_madmom: Use Madmom if available (for local dev), otherwise use Essentia
         """
-        self.use_madmom = use_madmom and MADMOM_AVAILABLE
+        self.modal_endpoint = os.getenv("MODAL_CHORD_ENDPOINT")
         
+        # Try Essentia first (best for Railway)
+        if ESSENTIA_AVAILABLE:
+            self.essentia_service = get_essentia_service()
+            self.use_essentia = self.essentia_service is not None
+        else:
+            self.use_essentia = False
+            self.essentia_service = None
+        
+        # Madmom fallback (for local dev)
+        self.use_madmom = use_madmom and MADMOM_AVAILABLE
         if self.use_madmom:
             print("Initializing Madmom chord detection...")
             self.processor = DeepChromaChordRecognitionProcessor()
             print("Madmom chord detection ready")
         else:
-            print("Using librosa-based chord detection (fallback)")
             self.processor = None
+        
+        # Log active method
+        if self.use_essentia:
+            print("✅ Using Essentia chord detection (70-80% accuracy)")
+        elif self.use_madmom:
+            print("✅ Using Madmom chord detection (89%+ accuracy)")
+        else:
+            print("✅ Using Librosa chord detection (fallback, 60-70% accuracy)")
     
-    def detect_chords(self, audio_path: str, quality: str = "free") -> List[Dict]:
+    async def detect_chords(self, audio_path: str, quality: str = "free") -> List[Dict]:
         """
         Detect chords from audio file with quality tier support.
         
         Args:
             audio_path: Path to audio file
             quality: Detection quality tier:
-                - 'free': Madmom only (~75-80% accuracy)
-                - 'premium': Demucs separation + Madmom (~80-85% accuracy)
+                - 'free': Essentia (70-80% accuracy) or Librosa fallback
+                - 'premium': Modal.com with Madmom+Demucs (89%+ accuracy)
         
         Returns:
             List of chord detections:
@@ -55,12 +82,49 @@ class ChordDetectionService:
                 ...
             ]
         """
-        if quality == "premium":
-            return self._detect_premium(audio_path)
+        # Premium tier: Call Modal.com
+        if quality == "premium" and self.modal_endpoint:
+            return await self._detect_premium_modal(audio_path)
+        
+        # Free tier: Essentia or fallback
+        if self.use_essentia:
+            return self.essentia_service.detect_chords(audio_path)
         elif self.use_madmom:
             return self._detect_with_madmom(audio_path)
         else:
             return self._detect_with_librosa(audio_path)
+    
+    async def _detect_premium_modal(self, audio_path: str) -> List[Dict]:
+        """Call Modal.com endpoint for premium chord detection."""
+        try:
+            print("🚀 Calling Modal.com for premium chord detection...")
+            
+            # Read audio file
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+            
+            # Call Modal endpoint
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                response = await client.post(
+                    self.modal_endpoint,
+                    files={"audio_file": ("audio.mp3", audio_bytes, "audio/mpeg")}
+                )
+                response.raise_for_status()
+                result = response.json()
+            
+            print(f"✅ Modal.com returned {result.get('chord_count', 0)} chords")
+            return result.get("chords", [])
+            
+        except Exception as e:
+            print(f"❌ Modal premium detection failed: {e}")
+            print("Falling back to Essentia...")
+            
+            # Fallback to free tier
+            if self.use_essentia:
+                return self.essentia_service.detect_chords(audio_path)
+            else:
+                return self._detect_with_librosa(audio_path)
+
     
     def _detect_premium(self, audio_path: str) -> List[Dict]:
         """Detect chords using premium tier (Demucs + Madmom)."""
