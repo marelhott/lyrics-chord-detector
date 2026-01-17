@@ -130,40 +130,47 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white text-ink font-sans selection:bg-monstera-200">
+    <div className="flex h-screen overflow-hidden bg-dark-950 text-neutral-50 font-sans selection:bg-accent-purple/20 relative">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-accent-purple/10 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-accent-cyan/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-1/3 bg-accent-pink/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }}></div>
+      </div>
+
       {/* Sidebar */}
-      <div className="hidden lg:flex shrink-0 w-80 border-r border-monstera-200 bg-paper flex-col z-20 h-full relative shadow-sm">
+      <div className="hidden lg:flex shrink-0 w-80 border-r border-neutral-800/50 glass-strong flex-col z-20 h-full relative">
         {/* Header */}
-        <div className="border-b border-monstera-200 px-4 py-6 bg-white">
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-7 h-7 bg-monstera-400 rounded-md flex items-center justify-center shadow-sm">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        <div className="border-b border-neutral-800/50 px-6 py-8 bg-dark-900/50 backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-xl flex items-center justify-center shadow-glow-sm">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
             </div>
-            <h1 className="text-sm font-black text-ink uppercase tracking-widest">Lyrics Detector</h1>
+            <div>
+              <h1 className="text-lg font-bold text-gradient">Lyrics Detector</h1>
+              <p className="text-xs text-neutral-400 font-medium">
+                AI-powered transcription
+              </p>
+            </div>
           </div>
-          <p className="text-[10px] text-monstera-600 font-medium leading-relaxed">
-            AI-powered music transcription & chord detection
-          </p>
         </div>
 
         {/* Controls */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-          <div className="space-y-5">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          <div className="space-y-6">
             {/* Language Selector */}
             <LanguageSelector value={language} onChange={setLanguage} />
 
             {/* File Input Section */}
-            <section className="space-y-1">
-              <header className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black text-monstera-800 uppercase tracking-widest">Audio soubor</label>
-              </header>
+            <section className="space-y-3">
+              <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Audio File</label>
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className="w-full min-h-[120px] bg-white border border-monstera-200 rounded-md p-4 cursor-pointer hover:border-monstera-400 transition-all flex flex-col items-center justify-center gap-2 shadow-inner"
+                className="group relative w-full min-h-[140px] glass rounded-2xl p-6 cursor-pointer hover:border-accent-purple/50 transition-all duration-300 flex flex-col items-center justify-center gap-3"
               >
                 <input
                   ref={fileInputRef}
@@ -172,19 +179,27 @@ function App() {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <svg className="w-8 h-8 text-monstera-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <span className="text-[11px] font-bold text-monstera-600">
-                  {file ? file.name : 'Klikněte nebo přetáhněte'}
-                </span>
-                <span className="text-[8px] font-bold text-monstera-400 uppercase tracking-widest">
-                  MP3 nebo WAV (max 50MB)
-                </span>
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                  <div className="relative w-16 h-16 glass-strong rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg className="w-8 h-8 text-accent-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-neutral-200 block mb-1">
+                    {file ? file.name : 'Click or drag to upload'}
+                  </span>
+                  <span className="text-xs text-neutral-500 font-medium">
+                    MP3 or WAV (max 50MB)
+                  </span>
+                </div>
               </div>
               {file && (
-                <div className="mt-2 px-3 py-2 bg-monstera-50 border border-monstera-200 rounded-md">
-                  <p className="text-[9px] font-bold text-monstera-600 uppercase tracking-wide">
+                <div className="glass rounded-xl p-3 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-accent-cyan rounded-full animate-pulse"></div>
+                  <p className="text-xs text-neutral-300 font-medium">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
@@ -193,32 +208,42 @@ function App() {
 
             {/* Progress */}
             {loading && progress && (
-              <div className="p-3 bg-monstera-50 border border-monstera-200 rounded-md">
-                <div className="flex items-center gap-2">
-                  <div className="animate-pulse">
-                    <div className="w-2 h-2 bg-monstera-400 rounded-full"></div>
-                  </div>
-                  <p className="text-[10px] font-bold text-monstera-800 uppercase tracking-wide">{progress}</p>
+              <div className="glass rounded-xl p-4 border-accent-purple/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-accent-purple rounded-full animate-pulse"></div>
+                  <p className="text-xs font-semibold text-neutral-200">{progress}</p>
                 </div>
               </div>
             )}
 
             {/* Error */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-[10px] font-bold text-red-700">{error}</p>
+              <div className="glass rounded-xl p-4 border-red-500/30 bg-red-500/5">
+                <p className="text-xs font-semibold text-red-400">{error}</p>
               </div>
             )}
 
             {/* Result Info */}
             {result && (
-              <div className="p-3 bg-monstera-50 border border-monstera-200 rounded-md space-y-1">
-                <p className="text-[9px] font-black text-monstera-800 uppercase tracking-wide">Výsledky:</p>
-                <div className="text-[8px] text-monstera-600 space-y-0.5">
-                  <p>🌍 Jazyk: <span className="font-bold">{result.language?.toUpperCase()}</span></p>
-                  <p>📝 Segmentů: <span className="font-bold">{result.segments?.length || 0}</span></p>
-                  <p>🎸 Akordů: <span className="font-bold">{result.chords?.length || 0}</span></p>
-                  <p>📋 Sekcí: <span className="font-bold">{result.structure?.length || 0}</span></p>
+              <div className="glass-strong rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-neutral-200 uppercase tracking-wider">Results</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="glass rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-gradient">{result.language?.toUpperCase()}</p>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Language</p>
+                  </div>
+                  <div className="glass rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-gradient">{result.chords?.length || 0}</p>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Chords</p>
+                  </div>
+                  <div className="glass rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-gradient">{result.segments?.length || 0}</p>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Segments</p>
+                  </div>
+                  <div className="glass rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-gradient">{result.structure?.length || 0}</p>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider mt-1">Sections</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -226,49 +251,61 @@ function App() {
         </div>
 
         {/* Generate Button */}
-        <div className="p-4 border-t border-monstera-200 bg-paper/80 backdrop-blur-xl">
+        <div className="p-6 border-t border-neutral-800/50 glass-strong backdrop-blur-xl">
           <button
             onClick={handleProcess}
             disabled={!file || loading}
-            className="w-full py-3 px-6 bg-gradient-to-br from-monstera-300 to-monstera-400 hover:from-ink hover:to-monstera-900 hover:text-white text-ink font-[900] text-[13px] uppercase tracking-[0.2em] border-2 border-ink rounded-md transition-all shadow-[5px_5px_0_rgba(13,33,23,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-20 disabled:cursor-not-allowed disabled:grayscale"
+            className="relative w-full group"
           >
-            {loading ? 'Zpracovávám...' : 'Analyzovat'}
+            <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity group-disabled:opacity-0"></div>
+            <div className="relative py-4 px-6 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-xl font-bold text-sm uppercase tracking-wider text-white shadow-soft transition-all duration-300 group-hover:scale-105 group-hover:shadow-glow-lg group-disabled:opacity-30 group-disabled:cursor-not-allowed group-disabled:scale-100">
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Processing...
+                </span>
+              ) : (
+                'Analyze Track'
+              )}
+            </div>
           </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 h-full overflow-y-auto custom-scrollbar bg-white relative flex flex-col">
+      <main className="flex-1 h-full overflow-y-auto custom-scrollbar relative flex flex-col">
         {/* Mobile Header */}
-        <div className="lg:hidden border-b border-monstera-200 px-4 py-4 bg-white">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-6 h-6 bg-monstera-400 rounded-md flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        <div className="lg:hidden border-b border-neutral-800/50 px-4 py-4 glass-strong backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-lg flex items-center justify-center shadow-glow-sm">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
             </div>
-            <h1 className="text-xs font-black text-ink uppercase tracking-widest">Lyrics Detector</h1>
+            <h1 className="text-base font-bold text-gradient">Lyrics Detector</h1>
           </div>
         </div>
 
-        <div className="p-4 lg:px-10 lg:pt-6 lg:pb-10 space-y-6 md:space-y-8 max-w-[1800px] mx-auto w-full">
+        <div className="p-4 lg:px-12 lg:pt-8 lg:pb-12 space-y-8 max-w-[1800px] mx-auto w-full relative z-10">
           {!result ? (
-            <div className="py-20 md:py-40 flex flex-col items-center justify-center space-y-6">
+            <div className="py-20 md:py-40 flex flex-col items-center justify-center space-y-8">
               {loading ? (
-                <div className="w-full max-w-md space-y-4">
-                  <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-monstera-50 rounded-full flex items-center justify-center mx-auto border-4 border-monstera-100 animate-pulse">
-                      <span className="text-3xl animate-bounce">🎵</span>
+                <div className="w-full max-w-md space-y-6">
+                  <div className="text-center space-y-4">
+                    <div className="relative mx-auto w-24 h-24">
+                      <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                      <div className="relative glass-strong rounded-full w-full h-full flex items-center justify-center border-2 border-accent-purple/30">
+                        <span className="text-4xl animate-bounce">🎵</span>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-black text-ink uppercase tracking-widest">Analyzuji skladbu</h3>
-                    <p className="text-xs font-bold text-monstera-600">{progress}</p>
+                    <h3 className="text-2xl font-bold text-gradient">Analyzing Track</h3>
+                    <p className="text-sm text-neutral-400 font-medium">{progress}</p>
                   </div>
 
-                  {/* Progress Bar Container */}
-                  <div className="h-4 w-full bg-monstera-100 rounded-full overflow-hidden border border-monstera-200">
-                    {/* Animated Progress Bar */}
+                  {/* Progress Bar */}
+                  <div className="relative h-2 w-full glass rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-monstera-400 to-monstera-600 animate-progress"
+                      className="h-full bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink animate-gradient rounded-full"
                       style={{
                         width: '100%',
                         animation: 'progress 15s ease-in-out infinite'
@@ -276,38 +313,42 @@ function App() {
                     ></div>
                   </div>
                   <style>{`
-                        @keyframes progress {
-                            0% { width: 0%; }
-                            20% { width: 30%; }
-                            50% { width: 60%; }
-                            80% { width: 85%; }
-                            90% { width: 95%; }
-                            100% { width: 98%; }
-                        }
-                    `}</style>
+                    @keyframes progress {
+                      0% { width: 0%; }
+                      20% { width: 30%; }
+                      50% { width: 60%; }
+                      80% { width: 85%; }
+                      90% { width: 95%; }
+                      100% { width: 98%; }
+                    }
+                  `}</style>
                 </div>
               ) : (
                 <>
-                  <div className="w-16 h-16 bg-monstera-50 rounded-md flex items-center justify-center grayscale opacity-20 border border-monstera-200 shadow-inner">
-                    <span className="text-3xl">🎵</span>
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-3xl blur-2xl opacity-20"></div>
+                    <div className="relative glass-strong rounded-3xl w-24 h-24 flex items-center justify-center border border-neutral-700/50">
+                      <span className="text-5xl opacity-30 grayscale">🎵</span>
+                    </div>
                   </div>
-                  <div className="text-center space-y-2">
-                    <span className="text-lg font-bold text-ink block">Zatím žádné výsledky</span>
-                    <p className="text-sm text-monstera-600 max-w-md">
-                      Nahrajte MP3 nebo WAV soubor pro detekci textu a akordů
+                  <div className="text-center space-y-3 max-w-lg">
+                    <h2 className="text-2xl font-bold text-neutral-200">No Results Yet</h2>
+                    <p className="text-sm text-neutral-500 leading-relaxed">
+                      Upload an MP3 or WAV file to detect lyrics and chords using AI
                     </p>
                   </div>
                 </>
               )}
+
               {/* Mobile upload */}
-              <div className="lg:hidden w-full max-w-sm space-y-4 mt-8">
+              <div className="lg:hidden w-full max-w-sm space-y-5 mt-12">
                 <LanguageSelector value={language} onChange={setLanguage} />
 
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  className="w-full min-h-[140px] bg-monstera-50 border-2 border-dashed border-monstera-300 rounded-md p-4 cursor-pointer hover:border-monstera-400 transition-all flex flex-col items-center justify-center gap-2"
+                  className="group relative w-full min-h-[160px] glass rounded-2xl p-6 cursor-pointer hover:border-accent-purple/50 transition-all duration-300 flex flex-col items-center justify-center gap-4"
                 >
                   <input
                     ref={fileInputRef}
@@ -316,41 +357,56 @@ function App() {
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  <svg className="w-10 h-10 text-monstera-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <span className="text-xs font-bold text-monstera-600">
-                    {file ? file.name : 'Klikněte pro nahrání'}
-                  </span>
-                  <span className="text-[9px] font-bold text-monstera-400 uppercase tracking-widest">
-                    MP3 nebo WAV (max 50MB)
-                  </span>
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                    <div className="relative w-16 h-16 glass-strong rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg className="w-8 h-8 text-accent-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-neutral-200 block mb-1">
+                      {file ? file.name : 'Click to upload'}
+                    </span>
+                    <span className="text-xs text-neutral-500 font-medium">
+                      MP3 or WAV (max 50MB)
+                    </span>
+                  </div>
                 </div>
 
                 {file && (
                   <button
                     onClick={handleProcess}
                     disabled={loading}
-                    className="w-full py-3 px-6 bg-monstera-400 text-ink font-[900] text-xs uppercase tracking-[0.2em] border-2 border-ink rounded-md transition-all shadow-[4px_4px_0_rgba(13,33,23,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-20 disabled:grayscale"
+                    className="relative w-full group"
                   >
-                    {loading ? 'Zpracovávám...' : 'Analyzovat'}
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity group-disabled:opacity-0"></div>
+                    <div className="relative py-4 px-6 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-xl font-bold text-sm uppercase tracking-wider text-white shadow-soft transition-all duration-300 group-hover:scale-105 group-hover:shadow-glow-lg group-disabled:opacity-30 group-disabled:cursor-not-allowed group-disabled:scale-100">
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Processing...
+                        </span>
+                      ) : (
+                        'Analyze Track'
+                      )}
+                    </div>
                   </button>
                 )}
 
                 {loading && progress && (
-                  <div className="p-3 bg-monstera-50 border border-monstera-200 rounded-md">
-                    <div className="flex items-center gap-2">
-                      <div className="animate-pulse">
-                        <div className="w-2 h-2 bg-monstera-400 rounded-full"></div>
-                      </div>
-                      <p className="text-[10px] font-bold text-monstera-800">{progress}</p>
+                  <div className="glass rounded-xl p-4 border-accent-purple/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 bg-accent-purple rounded-full animate-pulse"></div>
+                      <p className="text-xs font-semibold text-neutral-200">{progress}</p>
                     </div>
                   </div>
                 )}
 
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-[10px] font-bold text-red-700">{error}</p>
+                  <div className="glass rounded-xl p-4 border-red-500/30 bg-red-500/5">
+                    <p className="text-xs font-semibold text-red-400">{error}</p>
                   </div>
                 )}
               </div>
@@ -359,12 +415,10 @@ function App() {
             /* Results */
             <div className="space-y-6">
               {/* Header with Export */}
-              <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-1">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-4 bg-ink rounded-full"></div>
-                    <h2 className="text-[11px] font-[900] uppercase tracking-[0.3em] text-ink">Výsledky</h2>
-                  </div>
+              <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-gradient uppercase tracking-wider">Results</h2>
+                  <div className="h-1 w-20 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full"></div>
                 </div>
 
                 <ExportOptions result={result} />
