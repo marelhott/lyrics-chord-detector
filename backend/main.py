@@ -40,7 +40,7 @@ print("=" * 60)
 
 # Load services - using OpenAI API for speed
 whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
-chord_service = get_chord_service(use_madmom=True)  # Using Madmom for better accuracy
+chord_service = get_chord_service(use_madmom=False)  # Librosa fallback for Railway
 structure_service = get_structure_service()
 alignment_service = get_alignment_service()
 
