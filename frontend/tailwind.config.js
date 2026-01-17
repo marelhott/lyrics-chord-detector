@@ -14,6 +14,7 @@ export default {
           800: '#1a1a24',
           700: '#252530',
           600: '#2f2f3d',
+          500: '#3e3e4f',
         },
         // Gradient accent colors
         accent: {
