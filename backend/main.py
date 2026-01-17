@@ -140,8 +140,8 @@ async def process_demo(
         print("Step 1/5: Transcribing audio (30s)...")
         transcription = whisper_service.transcribe(trimmed_path, language=language)
         
-        print("Step 2/5: Detecting chords...")
-        chords = chord_service.detect_chords(trimmed_path)
+        print(f"Step 2/5: Detecting chords ({quality} quality)...")
+        chords = await chord_service.detect_chords(trimmed_path, quality=quality)
         
         # Detect key
         key = chord_service.detect_key(trimmed_path)
@@ -212,7 +212,8 @@ async def process_demo(
 @app.post("/process-audio")
 async def process_audio(
     file: UploadFile = File(...),
-    language: Optional[str] = Form(None)
+    language: Optional[str] = Form(None),
+    quality: str = Form("free")  # 'free' or 'premium'
 ):
     """
     Process audio file - transcribe lyrics and detect chords.
@@ -220,6 +221,7 @@ async def process_audio(
     Args:
         file: Audio file (MP3/WAV)
         language: Language code ("en", "cs", "sk", etc.) or None for auto-detect
+        quality: Chord detection quality ('free' or 'premium')
     
     Returns:
         JSON with:
@@ -231,6 +233,10 @@ async def process_audio(
         - aligned_chords: Chords aligned with specific words
         - formatted_output: Ultimate Guitar style text
     """
+    # Validate quality
+    if quality not in ["free", "premium"]:
+        raise HTTPException(status_code=400, detail="Invalid quality. Use 'free' or 'premium'")
+        
     # Validate file type
     if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
         raise HTTPException(
@@ -260,6 +266,7 @@ async def process_audio(
         print(f"Processing: {file.filename}")
         print(f"Size: {len(content) / 1024 / 1024:.2f}MB")
         print(f"Language: {language or 'auto-detect'}")
+        print(f"Quality: {quality.upper()}")
         print(f"{'='*60}\n")
         
         # Step 1: Transcribe with Whisper (word-level timestamps)
@@ -270,8 +277,8 @@ async def process_audio(
         )
         
         # Step 2: Detect chords
-        print("Step 2/5: Detecting chords...")
-        chords = chord_service.detect_chords(temp_path)
+        print(f"Step 2/5: Detecting chords ({quality} quality)...")
+        chords = await chord_service.detect_chords(temp_path, quality=quality)
         
         # Detect key
         key = chord_service.detect_key(temp_path)
@@ -322,7 +329,9 @@ async def process_audio(
             "chords": chords,
             "structure": structure,
             "aligned_chords": aligned_chords,
-            "formatted_output": formatted_output
+            "formatted_output": formatted_output,
+            "title": title,
+            "key": key
         })
     
     except Exception as e:

@@ -10,11 +10,21 @@ export default {
         // Dark modern palette
         dark: {
           950: '#0a0a0f',
-          900: '#111118',
+          900: '#111118', // Keep as fallback
           800: '#1a1a24',
           700: '#252530',
           600: '#2f2f3d',
           500: '#3e3e4f',
+        },
+        stackwise: {
+          bg: '#0b0f0b', // rgb(11, 15, 11) - Deep Forest Black
+          green: '#d5fdc9', // rgb(213, 253, 201) - Pale Lime
+          glass: 'rgba(213, 253, 201, 0.04)',
+          border: 'rgba(213, 253, 201, 0.1)',
+          text: {
+            primary: '#d1d1d1', // rgb(209, 209, 209)
+            secondary: '#a3a3a3', // rgb(163, 163, 163)
+          }
         },
         // Gradient accent colors
         accent: {
@@ -36,6 +46,10 @@ export default {
           800: '#262626',
           900: '#171717',
         }
+      },
+      letterSpacing: {
+        'tighter-custom': '-0.03em', // ~ -2.16px
+        'ultra-tight': '-0.05em', // ~ -3.36px
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

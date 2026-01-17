@@ -74,7 +74,7 @@ class EssentiaChordService:
             hpcp_features.append(hpcp_frame)
         
         # Detect chords from HPCP
-        chords, strengths = self.chord_detector(es.array(hpcp_features))
+        chords, strengths = self.chord_detector(np.array(hpcp_features).astype(np.float32))
         
         # Convert to timeline
         time_per_frame = hop_size / 44100.0
