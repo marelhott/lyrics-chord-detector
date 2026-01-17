@@ -44,8 +44,8 @@ class ChordDetectionService:
         Args:
             audio_path: Path to audio file
             quality: Detection quality tier:
-                - 'free': Madmom (good accuracy, ~75-80%)
-                - 'premium': Music.ai + Demucs (best accuracy, ~85-90%)
+                - 'free': Madmom only (~75-80% accuracy)
+                - 'premium': Demucs separation + Madmom (~80-85% accuracy)
         
         Returns:
             List of chord detections:
@@ -63,29 +63,28 @@ class ChordDetectionService:
             return self._detect_with_librosa(audio_path)
     
     def _detect_premium(self, audio_path: str) -> List[Dict]:
-        """Detect chords using premium tier (Music.ai + Demucs)."""
+        """Detect chords using premium tier (Demucs + Madmom)."""
         try:
-            from services.music_ai_service import get_music_ai_service
             from services.demucs_service import get_demucs_service
             import os
             
-            # Get services
-            music_ai = get_music_ai_service()
+            # Get Demucs service
             demucs = get_demucs_service()
             
-            if not music_ai or not demucs:
-                print("Premium services not available, falling back to Madmom")
+            if not demucs:
+                print("Demucs not available, falling back to Madmom")
                 return self._detect_with_madmom(audio_path)
             
             # Step 1: Separate guitar using Demucs
-            print("🎸 Separating guitar track...")
+            print("🎸 Separating guitar track with Demucs...")
             guitar_path = demucs.separate_guitar(audio_path)
             
             try:
-                # Step 2: Detect chords on isolated guitar
-                print("🎵 Detecting chords with Music.ai...")
-                chords = music_ai.detect_chords_premium(guitar_path, "complex_pop")
+                # Step 2: Detect chords on isolated guitar with Madmom
+                print("🎵 Detecting chords on isolated guitar...")
+                chords = self._detect_with_madmom(guitar_path)
                 
+                print(f"✅ Premium detection complete: {len(chords)} chords")
                 return chords
                 
             finally:
@@ -95,7 +94,7 @@ class ChordDetectionService:
                     
         except Exception as e:
             print(f"Premium detection failed: {str(e)}")
-            print("Falling back to Madmom...")
+            print("Falling back to standard Madmom...")
             return self._detect_with_madmom(audio_path)
 
     
