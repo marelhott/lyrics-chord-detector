@@ -1,11 +1,19 @@
-[nix]
-channel = "stable-24_11"
+[phases.setup]
+nixPkgs = ["python311", "nodejs", "ffmpeg"]
+
+[phases.install]
+cmds = [
+    "cd frontend && npm install --include=dev",
+    "cd backend && pip install -r requirements.railway.txt"
+]
 
 [phases.build]
-cmds = ["echo 'Building backend'", "pip install -r requirements.railway.txt"]
+cmds = [
+    "cd frontend && npm run build",
+    "echo 'Build finished. Checking dist:'",
+    "ls -la frontend/dist || echo 'Dist folder missing!'",
+    "ls -la frontend"
+]
 
-[phases.start]
-cmd = ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "$PORT"]
-
-[variables]
-PYTHONPATH = "${ env:RAILWAY_SOURCE_DIR }"
+[start]
+cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
