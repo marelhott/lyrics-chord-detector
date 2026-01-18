@@ -4,7 +4,7 @@ import DemoPreview from './components/DemoPreview'
 import LanguageSelector from './components/LanguageSelector'
 import ExportOptions from './components/ExportOptions'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api' : '/api')
 
 function App() {
   const [file, setFile] = useState(null)

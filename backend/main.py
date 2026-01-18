@@ -1,6 +1,7 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import tempfile
 import os
 from typing import Optional
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create API router with /api prefix
+api_router = APIRouter(prefix="/api")
+
 # Initialize services at startup
 print("=" * 60)
 print("🎵 Lyrics & Chord Detector API v2.0 (Fast)")
@@ -49,7 +53,7 @@ print("✅ All services loaded successfully!")
 print("=" * 60)
 
 
-@app.get("/")
+@api_router.get("/")
 async def root():
     """API root endpoint."""
     return {
@@ -65,7 +69,7 @@ async def root():
     }
 
 
-@app.get("/health")
+@api_router.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {
@@ -76,7 +80,7 @@ async def health_check():
     }
 
 
-@app.post("/process-demo")
+@api_router.post("/process-demo")
 async def process_demo(
     file: UploadFile = File(...),
     language: Optional[str] = Form(None),
@@ -209,7 +213,7 @@ async def process_demo(
             os.unlink(temp_path)
 
 
-@app.post("/process-audio")
+@api_router.post("/process-audio")
 async def process_audio(
     file: UploadFile = File(...),
     language: Optional[str] = Form(None)
@@ -341,7 +345,7 @@ async def process_audio(
             os.unlink(temp_path)
 
 
-@app.post("/detect-language")
+@api_router.post("/detect-language")
 async def detect_language(file: UploadFile = File(...)):
     """
     Detect the language of an audio file.
@@ -376,6 +380,43 @@ async def detect_language(file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)
+
+
+# Include API router
+app.include_router(api_router)
+
+# Serve frontend static files (for Railway deployment)
+frontend_dist_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+print(f"\nChecking for frontend at: {frontend_dist_path}")
+
+if os.path.exists(frontend_dist_path):
+    print(f"✅ Frontend found! Serving static files from {frontend_dist_path}")
+
+    # Mount static assets (JS, CSS, images, etc.)
+    assets_path = os.path.join(frontend_dist_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+    # Serve index.html for root and all other routes (SPA support)
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve frontend for all non-API routes."""
+        # If requesting a static file that exists, serve it
+        file_path = os.path.join(frontend_dist_path, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+
+        # Otherwise, serve index.html (for SPA routing)
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+
+        raise HTTPException(status_code=404, detail="Frontend not found")
+else:
+    print(f"⚠️ Frontend dist not found at: {frontend_dist_path}")
+    print("   Frontend will not be served. API-only mode.")
+
+print("=" * 60)
 
 
 if __name__ == "__main__":
