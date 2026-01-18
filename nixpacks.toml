@@ -4,7 +4,7 @@ nixPkgs = ["python311", "nodejs", "ffmpeg"]
 [phases.install]
 cmds = [
     "npm install --prefix frontend --include=dev",
-    "pip install --no-cache-dir -r backend/requirements.railway.txt"
+    "python -m pip install --no-cache-dir -r backend/requirements.railway.txt"
 ]
 
 [phases.build]
@@ -16,4 +16,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+cmd = "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
