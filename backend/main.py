@@ -90,20 +90,7 @@ print("✅ All services loaded successfully!")
 print("=" * 60)
 
 
-@app.get("/")
-async def root():
-    """API root endpoint."""
-    return {
-        "message": "Lyrics & Chord Detector API v2.0",
-        "status": "running",
-        "features": [
-            "Multi-language support (CS, SK, EN, auto-detect)",
-            "Word-level timestamps",
-            "Advanced chord detection (7th, sus, dim, aug)",
-            "Song structure detection (Intro, Verse, Chorus, etc.)",
-            "Ultimate Guitar style formatting"
-        ]
-    }
+# Root endpoint removed to allow serving frontend index.html via catch-all/static mounting
 
 
 @app.get("/health")
