@@ -405,6 +405,10 @@ if os.path.exists(frontend_dist):
     
     # Mount assets folder
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+
+    @app.get("/")
+    async def serve_root():
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
     
     # Catch-all route for SPA
     @app.get("/{full_path:path}")
