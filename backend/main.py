@@ -397,6 +397,14 @@ if os.path.exists(frontend_dist_path):
     if os.path.exists(assets_path):
         app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
+    @app.get("/")
+    async def serve_root():
+        """Serve index.html at root."""
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Index not found")
+
     # Serve index.html for root and all other routes (SPA support)
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
