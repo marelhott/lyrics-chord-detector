@@ -423,6 +423,30 @@ if os.path.exists(frontend_dist):
 else:
     print(f"⚠️ Frontend dist not found at: {frontend_dist}")
 
+    @app.get("/")
+    async def root_debug():
+        debug_info = {
+            "error": "Frontend build not found",
+            "expected_path": frontend_dist,
+            "cwd": os.getcwd(),
+        }
+        
+        # safely try to list directories to diagnose
+        try:
+            root_dir = os.path.dirname(os.getcwd())
+            debug_info["root_contents"] = os.listdir(root_dir)
+            
+            headers_frontend = os.path.join(root_dir, "frontend")
+            if os.path.exists(headers_frontend):
+                debug_info["frontend_contents"] = os.listdir(headers_frontend)
+            else:
+                debug_info["frontend_exists"] = False
+                
+        except Exception as e:
+            debug_info["fs_error"] = str(e)
+            
+        return debug_info
+
 
 if __name__ == "__main__":
     import uvicorn
