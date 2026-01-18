@@ -15,6 +15,6 @@ cd ..
 echo "=== Installing Python Dependencies ==="
 cd backend
 echo "Current directory: $(pwd)"
-ls -la requirements.railway.txt || echo "requirements.railway.txt NOT FOUND in $(pwd)"
-pip install --no-cache-dir -r requirements.railway.txt
+ls -la requirements.txt || echo "requirements.txt NOT FOUND in $(pwd)"
+pip install --no-cache-dir -r requirements.txt
 echo "=== Build Complete ==="
