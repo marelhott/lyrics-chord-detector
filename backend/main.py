@@ -93,9 +93,6 @@ print("✅ All services loaded successfully!")
 print("=" * 60)
 
 
-<<<<<<< HEAD
-# Root endpoint removed to allow serving frontend index.html via catch-all/static mounting
-=======
 @api_router.get("/")
 async def root():
     """API root endpoint."""
@@ -110,7 +107,6 @@ async def root():
             "Ultimate Guitar style formatting"
         ]
     }
->>>>>>> claude/fix-railway-venv-error-nkiby
 
 
 @api_router.get("/health")
@@ -416,62 +412,6 @@ async def detect_language(file: UploadFile = File(...)):
             os.unlink(temp_path)
 
 
-<<<<<<< HEAD
-# Mount React Frontend (Must be last)
-# Determine path to frontend/dist
-frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
-
-if os.path.exists(frontend_dist):
-    print(f"✅ Mounting frontend from: {frontend_dist}")
-    
-    # Mount assets folder
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
-
-    @app.get("/")
-    async def serve_root():
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
-    
-    # Catch-all route for SPA
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        # Check if file exists in dist (e.g. favicon.ico)
-        possible_file = os.path.join(frontend_dist, full_path)
-        if os.path.isfile(possible_file):
-            return FileResponse(possible_file)
-        
-        # Prevent serving index.html for API routes that look like files but are 404s
-        if full_path.startswith("api"):
-             raise HTTPException(status_code=404, detail="API endpoint not found")
-
-        # Otherwise return index.html
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
-else:
-    print(f"⚠️ Frontend dist not found at: {frontend_dist}")
-
-    @app.get("/")
-    async def root_debug():
-        debug_info = {
-            "error": "Frontend build not found",
-            "expected_path": frontend_dist,
-            "cwd": os.getcwd(),
-        }
-        
-        # safely try to list directories to diagnose
-        try:
-            root_dir = os.path.dirname(os.getcwd())
-            debug_info["root_contents"] = os.listdir(root_dir)
-            
-            headers_frontend = os.path.join(root_dir, "frontend")
-            if os.path.exists(headers_frontend):
-                debug_info["frontend_contents"] = os.listdir(headers_frontend)
-            else:
-                debug_info["frontend_exists"] = False
-                
-        except Exception as e:
-            debug_info["fs_error"] = str(e)
-            
-        return debug_info
-=======
 # Include API router
 app.include_router(api_router)
 
@@ -515,7 +455,6 @@ else:
     print("   Frontend will not be served. API-only mode.")
 
 print("=" * 60)
->>>>>>> claude/fix-railway-venv-error-nkiby
 
 
 if __name__ == "__main__":
