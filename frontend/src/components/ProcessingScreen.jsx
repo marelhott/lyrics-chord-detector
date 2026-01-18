@@ -25,7 +25,7 @@ export function ProcessingScreen() {
         }
         return prev;
       });
-    }, 700);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, []);
