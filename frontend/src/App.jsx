@@ -5,7 +5,7 @@ import { ResultsScreen } from './components/ResultScreen'; // Note: filename is 
 import { ExportModal } from './components/ExportModal';
 import { transformSongData } from './lib/songUtils';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('upload');
@@ -31,8 +31,15 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Processing failed');
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Processing failed');
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON error response:", text);
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}...`);
+        }
       }
 
       const backendData = await response.json();
