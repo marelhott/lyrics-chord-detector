@@ -1,11 +1,14 @@
-[nix]
-channel = "stable-24_11"
+[phases.setup]
+nixPkgs = ["python3", "nodejs", "ffmpeg"]
+
+[phases.install]
+cmds = [
+    "cd frontend && npm install",
+    "cd backend && pip install -r requirements.railway.txt"
+]
 
 [phases.build]
-cmds = ["echo 'Building backend'", "pip install -r requirements.railway.txt"]
+cmds = ["cd frontend && npm run build"]
 
-[phases.start]
-cmd = ["bash", "-lc", "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"]
-
-[variables]
-PYTHONPATH = "${ env:RAILWAY_SOURCE_DIR }"
+[start]
+cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
