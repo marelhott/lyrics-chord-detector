@@ -20,25 +20,25 @@ export default function DemoPreview({ result, onUnlock }) {
     // Render lyrics - show first verse fully, then block rest
     const renderBlockedLyrics = useCallback((text, lineIndex) => {
         if (!text || text.trim().startsWith('[') || text.trim() === '') {
-            return <span key={lineIndex} className="text-neutral-200">{text}</span>
+            return <span key={lineIndex} className="text-muted-foreground">{text}</span>
         }
 
         // Show first 6 lines of lyrics completely (roughly first verse)
         if (lineIndex < 15) {
-            return <span key={lineIndex} className="text-neutral-200">{text}</span>
+            return <span key={lineIndex} className="text-foreground">{text}</span>
         }
 
         // After first verse, show first 2 words then block
         const words = text.split(' ')
         if (words.length <= 2) {
-            return <span key={lineIndex} className="text-neutral-200">{text}</span>
+            return <span key={lineIndex} className="text-muted-foreground">{text}</span>
         }
 
         return (
-            <span key={lineIndex} className="text-neutral-200">
+            <span key={lineIndex} className="text-muted-foreground">
                 {words.slice(0, 2).join(' ')}
                 {' '}
-                <span className="inline-block bg-neutral-900 text-neutral-900 select-none rounded px-1">
+                <span className="inline-block bg-muted-foreground/20 text-transparent select-none rounded px-1 blur-[2px]">
                     {words.slice(2).join(' ')}
                 </span>
             </span>
@@ -80,15 +80,15 @@ export default function DemoPreview({ result, onUnlock }) {
     const renderLine = useCallback((line, idx) => {
         // Title and Key - show normally
         if (line.startsWith('Title:')) {
-            return <span key={idx} className="font-bold text-gradient text-xl">{line}</span>
+            return <span key={idx} className="font-bold text-primary text-xl">{line}</span>
         }
         if (line.startsWith('Key:')) {
-            return <span key={idx} className="font-semibold text-accent-cyan">{line}</span>
+            return <span key={idx} className="font-semibold text-primary">{line}</span>
         }
 
         // Section headers - show normally
         if (line.trim().startsWith('[')) {
-            return <span key={idx} className="font-bold text-accent-purple">{line}</span>
+            return <span key={idx} className="font-bold text-primary/80">{line}</span>
         }
 
         // Chord lines - show first 3 chords clearly GLOBALLY
@@ -120,8 +120,8 @@ export default function DemoPreview({ result, onUnlock }) {
                     <span
                         key={`chord-${idx}-${match.index}`}
                         className={`inline-block px-2 py-1 mx-0.5 rounded-lg border ${isFundamental
-                            ? 'bg-gradient-to-br from-accent-purple to-accent-cyan text-white font-bold shadow-glow-sm border-accent-purple/30'
-                            : 'glass border-neutral-600 text-neutral-300 font-semibold'
+                            ? 'bg-primary/20 text-primary border-primary/30 font-bold'
+                            : 'bg-muted border-border text-muted-foreground font-semibold'
                             } ${!isVisible ? 'blur-sm opacity-40 select-none' : ''}`}
                         style={{ fontSize: fontSize === 'text-xs' ? '11px' : fontSize === 'text-sm' ? '12px' : '13px' }}
                     >
@@ -154,29 +154,29 @@ export default function DemoPreview({ result, onUnlock }) {
     }
 
     return (
-        <div className="glass-strong rounded-2xl overflow-hidden shadow-soft-lg border border-neutral-700/50">
+        <div className="bg-card rounded-2xl overflow-hidden shadow-lg border border-border">
             {/* Header */}
-            <div className="glass border-b border-neutral-700/50 px-6 py-4 flex items-center justify-between">
+            <div className="bg-muted/50 border-b border-border px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-lg flex items-center justify-center shadow-glow-sm">
-                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                         </svg>
                     </div>
-                    <span className="text-sm font-bold text-gradient uppercase tracking-wider">
+                    <span className="text-sm font-bold text-primary uppercase tracking-wider">
                         Preview (30s)
                     </span>
                 </div>
 
                 {/* Font size controls */}
                 <div className="flex items-center gap-3">
-                    <span className="text-xs text-neutral-400 uppercase tracking-wide">Size:</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Size:</span>
                     <select
                         value={fontSize}
                         onChange={(e) => {
                             setFontSize(e.target.value)
                         }}
-                        className="text-xs font-semibold px-3 py-1.5 glass rounded-lg text-neutral-200 cursor-pointer hover:border-accent-purple/50 transition-colors"
+                        className="text-xs font-semibold px-3 py-1.5 bg-background border border-border rounded-lg text-foreground cursor-pointer hover:border-primary/50 transition-colors"
                     >
                         <option value="text-xs">Small</option>
                         <option value="text-sm">Medium</option>
@@ -187,7 +187,7 @@ export default function DemoPreview({ result, onUnlock }) {
 
             {/* Content with blur/block effects */}
             <div className="p-8 overflow-x-auto custom-scrollbar">
-                <div className={`font-mono ${fontSize} leading-loose text-neutral-200`}>
+                <div className={`font-mono ${fontSize} leading-loose text-foreground`}>
                     {lines.map((line, idx) => (
                         <div key={idx} className="whitespace-pre min-h-[1.8em]">
                             {renderLine(line, idx)}
@@ -197,17 +197,17 @@ export default function DemoPreview({ result, onUnlock }) {
             </div>
 
             {/* Unlock CTA */}
-            <div className="mx-6 mb-6 p-6 glass-strong border border-accent-purple/30 rounded-2xl relative overflow-hidden">
+            <div className="mx-6 mb-6 p-6 bg-muted/30 border border-primary/20 rounded-2xl relative overflow-hidden">
                 {/* Animated glow background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-accent-purple/10 via-accent-cyan/10 to-accent-pink/10 animate-gradient opacity-50"></div>
+                <div className="absolute inset-0 bg-primary/5 animate-pulse opacity-50"></div>
 
                 <div className="relative flex flex-col md:flex-row items-center gap-6">
                     {/* Lock icon */}
                     <div className="shrink-0">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full blur-xl opacity-50"></div>
-                            <div className="relative w-16 h-16 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-2xl flex items-center justify-center shadow-glow-md">
-                                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="absolute inset-0 bg-primary rounded-full blur-xl opacity-20"></div>
+                            <div className="relative w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
+                                <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </div>
@@ -216,10 +216,10 @@ export default function DemoPreview({ result, onUnlock }) {
 
                     {/* Text */}
                     <div className="flex-1 text-center md:text-left">
-                        <p className="text-sm font-semibold text-neutral-300 mb-2">
+                        <p className="text-sm font-semibold text-muted-foreground mb-2">
                             Unlock full lyrics & chords
                         </p>
-                        <p className="text-4xl font-bold text-gradient">
+                        <p className="text-4xl font-bold text-primary">
                             2,99 Kč
                         </p>
                     </div>
@@ -229,30 +229,30 @@ export default function DemoPreview({ result, onUnlock }) {
                         onClick={onUnlock}
                         className="relative shrink-0 group"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="relative px-8 py-4 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-xl font-bold text-sm uppercase tracking-wider text-white shadow-soft transition-all duration-300 group-hover:scale-105 group-hover:shadow-glow-lg">
+                        <div className="absolute inset-0 bg-primary rounded-xl blur-lg opacity-40 group-hover:opacity-70 transition-opacity"></div>
+                        <div className="relative px-8 py-4 bg-primary rounded-xl font-bold text-sm uppercase tracking-wider text-primary-foreground shadow-sm transition-all duration-300 group-hover:scale-105">
                             Pay with Stripe
                         </div>
                     </button>
                 </div>
 
                 {/* Benefits */}
-                <div className="relative mt-6 pt-6 border-t border-neutral-700/50">
-                    <p className="text-xs text-neutral-400 text-center flex items-center justify-center gap-6">
+                <div className="relative mt-6 pt-6 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-6">
                         <span className="flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             Instant access
                         </span>
                         <span className="flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             Secure payment
                         </span>
                         <span className="flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             Download as PDF
@@ -263,3 +263,4 @@ export default function DemoPreview({ result, onUnlock }) {
         </div>
     )
 }
+

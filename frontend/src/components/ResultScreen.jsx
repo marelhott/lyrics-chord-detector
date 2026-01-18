@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, FileDown, FileJson, Plus, Minus, ChevronRight, ArrowLeft, Download } from 'lucide-react';
+import { FileText, FileDown, FileJson, Plus, Minus, ChevronRight, ArrowLeft } from 'lucide-react';
 import UltimateGuitarPreview from './UltimateGuitarPreview';
 
 // Adapter to transform generic songData into the component's expected format
@@ -115,20 +115,20 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0f0d] text-white font-sans">
+    <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
       {/* Top Action Bar */}
-      <header className="border-b border-[#1a2520] px-8 py-4 bg-[#0a0f0d]">
+      <header className="border-b border-border px-8 py-4 bg-background">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={onNewAnalysis}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-[#a4e887]"></div>
-              <h1 className="text-white text-lg font-medium">
+              <div className="w-2 h-2 rounded-full bg-primary"></div>
+              <h1 className="text-foreground text-lg font-medium">
                 {fileName || 'Untitled song'}
               </h1>
             </div>
@@ -137,28 +137,28 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
           <div className="flex items-center gap-3">
             <button
               onClick={() => onExport('txt')}
-              className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-card border border-border text-muted-foreground rounded-lg hover:border-primary/50 transition-all text-sm flex items-center gap-2"
             >
               <FileText className="w-4 h-4" />
               Export TXT
             </button>
             <button
               onClick={() => onExport('pdf')}
-              className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-card border border-border text-muted-foreground rounded-lg hover:border-primary/50 transition-all text-sm flex items-center gap-2"
             >
               <FileDown className="w-4 h-4" />
               Export PDF
             </button>
             <button
               onClick={() => onExport('json')}
-              className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-card border border-border text-muted-foreground rounded-lg hover:border-primary/50 transition-all text-sm flex items-center gap-2"
             >
               <FileJson className="w-4 h-4" />
               Export JSON
             </button>
             <button
               onClick={onNewAnalysis}
-              className="px-4 py-2 bg-[#a4e887] text-[#0a0f0d] rounded-lg hover:bg-[#b5f497] transition-all text-sm font-medium"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all text-sm font-medium"
             >
               New analysis
             </button>
@@ -169,8 +169,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Song Structure */}
-        <aside className="w-64 border-r border-[#1a2520] bg-[#0a0f0d] p-6 overflow-y-auto">
-          <h2 className="text-gray-400 text-xs font-medium mb-4 tracking-wide">SONG STRUCTURE</h2>
+        <aside className="w-64 border-r border-border bg-background p-6 overflow-y-auto">
+          <h2 className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">SONG STRUCTURE</h2>
           <nav className="space-y-1">
             {/* 
               Note: if duplicate section names exist (e.g. Chorus appearing multiple times),
@@ -188,8 +188,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                   key={`${sectionName}-${index}`}
                   onClick={() => handleSectionClick(sectionName)}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-all group ${selectedSection === sectionName
-                      ? 'bg-[#1a2520] text-[#a4e887]'
-                      : 'text-gray-400 hover:bg-[#0f1612] hover:text-white'
+                    ? 'bg-muted text-primary'
+                    : 'text-muted-foreground hover:bg-card hover:text-foreground'
                     }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -198,7 +198,7 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                       <ChevronRight className="w-4 h-4" />
                     )}
                   </div>
-                  <div className="flex gap-3 text-xs text-gray-500">
+                  <div className="flex gap-3 text-xs text-muted-foreground/70">
                     {/* These stats are aggregated for all sections with this name */}
                     <span>{stats.words} words</span>
                     <span>·</span>
@@ -210,29 +210,29 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
           </nav>
 
           {/* Total Stats Section */}
-          <div className="mt-8 pt-6 border-t border-[#1a2520]">
-            <h2 className="text-gray-400 text-xs font-medium mb-4 tracking-wide">TOTAL STATS</h2>
+          <div className="mt-8 pt-6 border-t border-border">
+            <h2 className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">TOTAL STATS</h2>
 
-            <div className="bg-[#0f1612] border border-[#1a2520] rounded-lg p-4 mb-4">
+            <div className="bg-card border border-border rounded-lg p-4 mb-4">
               <div className="flex justify-between items-center mb-3">
                 <div>
-                  <div className="text-2xl font-bold text-white">{totalStats.words}</div>
-                  <div className="text-xs text-gray-500">Total Words</div>
+                  <div className="text-2xl font-bold text-foreground">{totalStats.words}</div>
+                  <div className="text-xs text-muted-foreground">Total Words</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-[#a4e887]">{totalStats.chords}</div>
-                  <div className="text-xs text-gray-500">Total Chords</div>
+                  <div className="text-2xl font-bold text-primary">{totalStats.chords}</div>
+                  <div className="text-xs text-muted-foreground">Total Chords</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#0f1612] border border-[#1a2520] rounded-lg p-4">
-              <h3 className="text-xs font-medium text-gray-400 mb-3 tracking-wide">CHORDS USED</h3>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-3 tracking-wide">CHORDS USED</h3>
               <div className="flex flex-wrap gap-2">
                 {totalStats.uniqueChords.map((chord) => (
                   <span
                     key={chord}
-                    className="px-2.5 py-1.5 bg-[#1a2520] border border-[#2a3530] rounded text-[#a4e887] text-sm font-mono font-medium hover:bg-[#2a3530] transition-colors"
+                    className="px-2.5 py-1.5 bg-muted border border-border rounded text-primary text-sm font-mono font-medium hover:bg-muted/80 transition-colors"
                   >
                     {chord}
                   </span>
@@ -246,15 +246,15 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-8 py-8">
             {/* Controls */}
-            <div className="flex items-center justify-between mb-8 pb-6 border-b border-[#1a2520]">
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-border">
               <div className="flex items-center gap-4">
                 {rawResult?.formatted_output && (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setViewMode('ug')}
                       className={`px-4 py-2 rounded-lg border transition-all text-sm ${viewMode === 'ug'
-                        ? 'bg-[#1a2520] border-[#a4e887] text-[#a4e887]'
-                        : 'bg-[#0f1612] border-[#1a2520] text-gray-400 hover:border-[#2a3530]'
+                        ? 'bg-muted border-primary text-primary'
+                        : 'bg-card border-border text-muted-foreground hover:border-primary/50'
                         }`}
                     >
                       Formatted
@@ -262,8 +262,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                     <button
                       onClick={() => setViewMode('structured')}
                       className={`px-4 py-2 rounded-lg border transition-all text-sm ${viewMode === 'structured'
-                        ? 'bg-[#1a2520] border-[#a4e887] text-[#a4e887]'
-                        : 'bg-[#0f1612] border-[#1a2520] text-gray-400 hover:border-[#2a3530]'
+                        ? 'bg-muted border-primary text-primary'
+                        : 'bg-card border-border text-muted-foreground hover:border-primary/50'
                         }`}
                     >
                       Structured
@@ -274,8 +274,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                 <button
                   onClick={() => setShowChords(!showChords)}
                   className={`px-4 py-2 rounded-lg border transition-all text-sm ${showChords
-                      ? 'bg-[#1a2520] border-[#a4e887] text-[#a4e887]'
-                      : 'bg-[#0f1612] border-[#1a2520] text-gray-400 hover:border-[#2a3530]'
+                    ? 'bg-muted border-primary text-primary'
+                    : 'bg-card border-border text-muted-foreground hover:border-primary/50'
                     }`}
                 >
                   {showChords ? 'Hide chords' : 'Show chords'}
@@ -283,16 +283,16 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-sm mr-2">Font size:</span>
+                <span className="text-muted-foreground text-sm mr-2">Font size:</span>
                 <button
                   onClick={() => setFontSize(prev => Math.max(12, prev - 2))}
-                  className="w-8 h-8 rounded-lg bg-[#0f1612] border border-[#1a2520] text-gray-300 hover:border-[#2a3530] transition-all flex items-center justify-center"
+                  className="w-8 h-8 rounded-lg bg-card border border-border text-muted-foreground hover:border-primary/50 transition-all flex items-center justify-center"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setFontSize(prev => Math.min(24, prev + 2))}
-                  className="w-8 h-8 rounded-lg bg-[#0f1612] border border-[#1a2520] text-gray-300 hover:border-[#2a3530] transition-all flex items-center justify-center"
+                  className="w-8 h-8 rounded-lg bg-card border border-border text-muted-foreground hover:border-primary/50 transition-all flex items-center justify-center"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -311,7 +311,7 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                       : 'opacity-30'
                       }`}
                   >
-                    <h3 className="text-[#a4e887] font-medium mb-6 text-sm tracking-wide uppercase">
+                    <h3 className="text-primary font-medium mb-6 text-sm tracking-wide uppercase">
                       {section.section}
                     </h3>
                     <div className="space-y-6 font-mono">
@@ -322,7 +322,7 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                               {line.chords.map((chord, chordIndex) => (
                                 <span
                                   key={chordIndex}
-                                  className="absolute px-2 py-0.5 bg-[#0f1612] border border-[#1a2520] rounded text-[#a4e887] inline-block whitespace-nowrap"
+                                  className="absolute px-2 py-0.5 bg-card border border-border rounded text-primary inline-block whitespace-nowrap"
                                   style={{
                                     left: `${line.positions[chordIndex] * 0.6}em`,
                                     fontSize: `${fontSize}px`
@@ -334,7 +334,7 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                             </div>
                           )}
                           <div
-                            className="text-gray-300 whitespace-pre"
+                            className="text-foreground/80 whitespace-pre"
                             style={{ fontSize: `${fontSize}px` }}
                           >
                             {line.lyrics}
@@ -352,3 +352,4 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
     </div>
   );
 }
+

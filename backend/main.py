@@ -118,37 +118,10 @@ async def health_check():
 
 # ... existing API routes ...
 
-# Mount React Frontend (Must be last)
-# Determine path to frontend/dist
-frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
-
-if os.path.exists(frontend_dist):
-    print(f"✅ Mounting frontend from: {frontend_dist}")
-    
-    # Mount assets folder
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
-    
-    # Catch-all route for SPA
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        # Check if file exists in dist (e.g. favicon.ico)
-        possible_file = os.path.join(frontend_dist, full_path)
-        if os.path.isfile(possible_file):
-            return FileResponse(possible_file)
-        
-        # Prevent serving index.html for API routes that look like files but are 404s
-        if full_path.startswith("api"):
-             raise HTTPException(status_code=404, detail="API endpoint not found")
-
-        # Otherwise return index.html
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
-else:
-    print(f"⚠️ Frontend dist not found at: {frontend_dist}")
+# Frontend mounting moved to end of file
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 @app.post("/process-demo")
@@ -434,6 +407,34 @@ async def detect_language(file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)
+
+
+# Mount React Frontend (Must be last)
+# Determine path to frontend/dist
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+if os.path.exists(frontend_dist):
+    print(f"✅ Mounting frontend from: {frontend_dist}")
+    
+    # Mount assets folder
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    
+    # Catch-all route for SPA
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Check if file exists in dist (e.g. favicon.ico)
+        possible_file = os.path.join(frontend_dist, full_path)
+        if os.path.isfile(possible_file):
+            return FileResponse(possible_file)
+        
+        # Prevent serving index.html for API routes that look like files but are 404s
+        if full_path.startswith("api"):
+             raise HTTPException(status_code=404, detail="API endpoint not found")
+
+        # Otherwise return index.html
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+else:
+    print(f"⚠️ Frontend dist not found at: {frontend_dist}")
 
 
 if __name__ == "__main__":

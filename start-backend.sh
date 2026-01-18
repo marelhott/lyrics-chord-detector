@@ -10,4 +10,4 @@ if [ -d "venv" ]; then
 fi
 
 # Start the server
-python main.py
+python3 main.py

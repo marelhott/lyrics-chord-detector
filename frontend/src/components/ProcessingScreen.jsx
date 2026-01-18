@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Mic } from 'lucide-react';
+import { Check, Music } from 'lucide-react';
 
 function pseudoRandom01(seed) {
   const x = Math.sin(seed * 9999) * 10000;
@@ -31,7 +31,7 @@ export function ProcessingScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-[#0a0f0d]">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
       {/* Waveform Background */}
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <svg
@@ -51,7 +51,7 @@ export function ProcessingScreen() {
                 y={100 - height / 2}
                 width="3"
                 height={height}
-                fill="#a4e887"
+                fill="hsl(var(--primary))" // Using CSS var inside SVG fill
                 className="animate-pulse"
                 style={{
                   animationDelay: `${delay}s`,
@@ -69,45 +69,45 @@ export function ProcessingScreen() {
         <div className="mb-12 flex justify-center">
           <div className="relative">
             {/* Outer glow rings */}
-            <div className="absolute inset-0 rounded-full border-2 border-[#a4e887] opacity-10 animate-ping" style={{ animationDuration: '2s' }}></div>
-            <div className="absolute -inset-8 rounded-full border border-[#a4e887] opacity-5"></div>
-            <div className="absolute -inset-16 rounded-full border border-[#a4e887] opacity-5"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-primary opacity-10 animate-ping" style={{ animationDuration: '2s' }}></div>
+            <div className="absolute -inset-8 rounded-full border border-primary opacity-5"></div>
+            <div className="absolute -inset-16 rounded-full border border-primary opacity-5"></div>
 
             {/* Main circle */}
-            <div className="w-48 h-48 rounded-full bg-gradient-to-br from-[#1a2520] to-[#0f1612] flex items-center justify-center relative shadow-2xl shadow-[#a4e887]/20">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#a4e887]/10 to-transparent"></div>
-              <Mic className="w-20 h-20 text-[#a4e887] relative z-10 animate-pulse" style={{ animationDuration: '2s' }} />
+            <div className="w-48 h-48 rounded-full bg-gradient-to-br from-muted to-card flex items-center justify-center relative shadow-2xl shadow-primary/20">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent"></div>
+              <Music className="w-20 h-20 text-primary relative z-10 animate-pulse" style={{ animationDuration: '2s' }} />
             </div>
           </div>
         </div>
 
         {/* Status Text */}
-        <h2 className="text-3xl font-bold text-white mb-3">Analyzing audio…</h2>
-        <p className="text-gray-400 mb-12">This usually takes under a minute</p>
+        <h2 className="text-3xl font-bold text-foreground mb-3">Analyzing track…</h2>
+        <p className="text-muted-foreground mb-12">This usually takes under a minute</p>
 
         {/* Progress Steps */}
-        <div className="bg-[#0f1612] border border-[#1a2520] rounded-xl p-8">
+        <div className="bg-card border border-border rounded-xl p-8">
           <div className="space-y-5">
             {steps.map((step, index) => (
               <div key={step} className="flex items-center gap-4">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${index < currentStep
-                      ? 'bg-[#a4e887]'
-                      : index === currentStep
-                        ? 'bg-[#2a3530] border-2 border-[#a4e887]'
-                        : 'bg-[#1a2520]'
+                    ? 'bg-primary'
+                    : index === currentStep
+                      ? 'bg-muted border-2 border-primary'
+                      : 'bg-muted/50'
                     }`}
                 >
                   {index < currentStep ? (
-                    <Check className="w-4 h-4 text-[#0a0f0d]" />
+                    <Check className="w-4 h-4 text-primary-foreground" />
                   ) : index === currentStep ? (
-                    <div className="w-2 h-2 rounded-full bg-[#a4e887] animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
                   ) : (
-                    <span className="text-gray-600 text-sm">{index + 1}</span>
+                    <span className="text-muted-foreground text-sm">{index + 1}</span>
                   )}
                 </div>
                 <span
-                  className={`text-left transition-colors ${index <= currentStep ? 'text-white' : 'text-gray-600'
+                  className={`text-left transition-colors ${index <= currentStep ? 'text-foreground' : 'text-muted-foreground'
                     }`}
                 >
                   {step}
@@ -120,3 +120,4 @@ export function ProcessingScreen() {
     </div>
   );
 }
+
