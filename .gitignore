@@ -21,3 +21,8 @@ build/
 # Nested repos (prevent accidental commits)
 lyrics-chord-detector/
 lyrics-chord-detector-*/
+
+# Temporary / Backup
+test.wav
+verify_essentia.py
+frontend/src_backup_before_redesign/
