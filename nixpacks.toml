@@ -1,19 +1,23 @@
 [phases.setup]
-nixPkgs = ["python3", "nodejs", "ffmpeg"]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib"]
 
 [phases.install]
 cmds = [
-    "cd frontend && npm install --include=dev",
-    "cd backend && pip install -r requirements.railway.txt"
+    "echo '=== Installing Frontend ==='",
+    "cd frontend && npm ci",
+    "echo '=== Installing Backend ==='",
+    "# Upgrade pip first",
+    "python3 -m pip install --upgrade pip",
+    "cd backend && pip install -r requirements.txt"
 ]
 
 [phases.build]
 cmds = [
+    "echo '=== Building Frontend ==='",
     "cd frontend && npm run build",
-    "echo 'Build finished. Checking dist:'",
-    "ls -la frontend/dist || echo 'Dist folder missing!'",
-    "ls -la frontend"
+    "echo '=== Checking Frontend Build ==='",
+    "ls -la frontend/dist"
 ]
 
 [start]
-cmd = "echo '--- DEBUG FILE SYSTEM ---' && find . -maxdepth 3 -not -path '*/.*' && echo '--- END DEBUG ---' && cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
