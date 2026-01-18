@@ -1,12 +1,11 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
-  "name": "lyrics-chord-detector",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r requirements.railway.txt"
+    "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend && python -m pip install --no-cache-dir -r backend/requirements.railway.txt"
   },
   "deploy": {
-    "startCommand": "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
