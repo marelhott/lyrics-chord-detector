@@ -3,7 +3,7 @@ nixPkgs = ["python3", "nodejs", "ffmpeg"]
 
 [phases.install]
 cmds = [
-    "cd frontend && npm install",
+    "cd frontend && npm install --include=dev",
     "cd backend && pip install -r requirements.railway.txt"
 ]
 
