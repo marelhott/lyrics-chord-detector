@@ -5,7 +5,7 @@ import { ResultsScreen } from './components/ResultScreen'; // Note: filename is 
 import { ExportModal } from './components/ExportModal';
 import { transformSongData } from './lib/songUtils';
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : 'https://lyrics-chord-detector-api-production-803a.up.railway.app');
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('upload');

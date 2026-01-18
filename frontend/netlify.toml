@@ -3,24 +3,6 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/process-audio"
-  to = "https://lyrics-chord-detector-api-production-803a.up.railway.app/process-audio"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/process-demo"
-  to = "https://lyrics-chord-detector-api-production-803a.up.railway.app/process-demo"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/detect-language"
-  to = "https://lyrics-chord-detector-api-production-803a.up.railway.app/detect-language"
-  status = 200
-  force = true
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
