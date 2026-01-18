@@ -24,7 +24,7 @@ export function transformSongData(backendData) {
 
   const lyrics = {};
 
-  sections.forEach((section, index) => {
+  sections.forEach((section) => {
     const sectionLines = [];
     
     // Find segments that fall into this section
@@ -54,44 +54,6 @@ export function transformSongData(backendData) {
         const lineWords = [];
         const lineChords = [];
 
-        // Get words from segment if available, otherwise split text
-        const words = segment.words || segment.text.trim().split(/\s+/).map(w => ({ word: w }));
-
-        words.forEach(wordObj => {
-          const wordText = wordObj.word;
-          lineWords.push(wordText);
-
-          // Find chord associated with this word
-          // The backend might associate chords with words. 
-          // Check aligned_chords for matching time or explicit linkage if available.
-          // The current aligned_chords structure in python service creates formatting but here we have raw data.
-          // Let's look at aligned_chords data again. It has 'word' field if aligned.
-          
-          // Strategy: Find a chord that has this 'word' assigned or is closest in time
-          const chord = backendData.aligned_chords.find(c => 
-            (c.word === wordText && Math.abs(c.time - (wordObj.start || segment.start)) < 1.0) ||
-            (c.time >= (wordObj.start || segment.start) && c.time < (wordObj.end || segment.end))
-          );
-          
-          // We need a more robust mapping because multiple chords can be on one word? 
-          // Or usually 1 chord per word change.
-          // Ideally, we align chords to words 1:1 for the grid.
-          
-          // For now, simple matching:
-          // Filter chords in this line's timeframe
-          
-        });
-        
-        // Alternative simple approach relying on backend alignment if possible:
-        // But backend sends flat lists.
-        
-        // Let's reconstruct lines based on segments.
-        // For each segment:
-        // 1. Get text/words.
-        // 2. Get chords that fall into segment timeframe.
-        // 3. Align them in a grid.
-        
-        // Improved logic:
         const segStart = segment.start;
         const segEnd = segment.end;
         
@@ -111,11 +73,18 @@ export function transformSongData(backendData) {
             lineChords.push(chord ? chord.chord : "");
           });
         } else {
-          // Fallback if no word timestamps: split by space and distribute chords evenly?
-          // Or just put chords at start.
-          const textParam = segment.text.trim();
-          lineWords.push(textParam);
-          lineChords.push(chordsInSeg.length > 0 ? chordsInSeg.map(c => c.chord).join(" ") : "");
+          const words = segment.text.trim().split(/\s+/).filter(Boolean);
+          const chordsText = chordsInSeg.length > 0 ? chordsInSeg.map(c => c.chord).join(" ") : "";
+
+          if (words.length === 0) {
+            lineWords.push(segment.text.trim());
+            lineChords.push(chordsText);
+          } else {
+            words.forEach((w, i) => {
+              lineWords.push(w);
+              lineChords.push(i === 0 ? chordsText : "");
+            });
+          }
         }
         
         sectionLines.push({

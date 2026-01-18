@@ -9,17 +9,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('upload');
-  const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [songData, setSongData] = useState(null);
-  const [error, setError] = useState(null);
+  const [rawResult, setRawResult] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState('txt');
 
   const handleFileSelect = async (selectedFile) => {
-    setFile(selectedFile);
     setFileName(selectedFile.name.replace(/\.(mp3|wav)$/i, ''));
     setCurrentScreen('processing');
-    setError(null);
 
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -40,6 +38,8 @@ export default function App() {
       const backendData = await response.json();
       console.log('Backend Data:', backendData);
 
+      setRawResult(backendData);
+
       const transformedData = transformSongData(backendData);
       console.log('Transformed Data:', transformedData);
 
@@ -48,16 +48,15 @@ export default function App() {
 
     } catch (err) {
       console.error('Error processing file:', err);
-      setError(err.message || 'An error occurred during processing.');
       alert(`Error: ${err.message}`);
       setCurrentScreen('upload');
     }
   };
 
   const handleNewAnalysis = () => {
-    setFile(null);
     setFileName('');
     setSongData(null);
+    setRawResult(null);
     setCurrentScreen('upload');
   };
 
@@ -75,13 +74,22 @@ export default function App() {
         <ResultsScreen
           fileName={fileName}
           songData={songData}
-          onExport={() => setShowExportModal(true)}
+          rawResult={rawResult}
+          onExport={(format) => {
+            setExportFormat(format);
+            setShowExportModal(true);
+          }}
           onNewAnalysis={handleNewAnalysis}
         />
       )}
 
       {showExportModal && (
-        <ExportModal onClose={() => setShowExportModal(false)} />
+        <ExportModal
+          key={exportFormat}
+          result={rawResult}
+          defaultFormat={exportFormat}
+          onClose={() => setShowExportModal(false)}
+        />
       )}
     </div>
   );

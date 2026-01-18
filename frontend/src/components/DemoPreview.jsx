@@ -2,7 +2,8 @@
  * Demo Preview Component
  * Shows blurred/blocked preview with unlock button
  */
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useMemo } from 'react'
 
 // Helper to check if chord is fundamental
 function isFundamentalChord(chord) {
@@ -12,102 +13,12 @@ function isFundamentalChord(chord) {
 
 export default function DemoPreview({ result, onUnlock }) {
     const [fontSize, setFontSize] = useState('text-sm')
-    // Track global chord index across entire song
-    const chordIndexRef = useRef(0)
 
-    if (!result || !result.formatted_output) {
-        return null
-    }
-
-    const lines = result.formatted_output.split('\n')
-
-    // Check if line contains chords
-    const isChordLine = useCallback((line) => {
-        if (line.startsWith('Title:') || line.startsWith('Key:') || line.trim().startsWith('[')) {
-            return false
-        }
-        const tokens = line.trim().split(/\s+/)
-        if (tokens.length === 0) return false
-
-        // Simple check: if most tokens look like chords
-        const chordPattern = /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?$/
-        const chordCount = tokens.filter(t => chordPattern.test(t)).length
-        return chordCount > 0 && chordCount / tokens.length > 0.5
-    }, [])
-
-    // Render a single line with proper global chord counting
-    const renderLine = useCallback((line, idx) => {
-        // Title and Key - show normally
-        if (line.startsWith('Title:')) {
-            return <span key={idx} className="font-bold text-gradient text-xl">{line}</span>
-        }
-        if (line.startsWith('Key:')) {
-            return <span key={idx} className="font-semibold text-accent-cyan">{line}</span>
-        }
-
-        // Section headers - show normally
-        if (line.trim().startsWith('[')) {
-            return <span key={idx} className="font-bold text-accent-purple">{line}</span>
-        }
-
-        // Chord lines - show first 3 chords clearly GLOBALLY
-        if (isChordLine(line)) {
-            const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
-            const parts = []
-            let lastIndex = 0
-            let match
-
-            while ((match = chordRegex.exec(line)) !== null) {
-                // Add spacing before chord
-                if (match.index > lastIndex) {
-                    parts.push(
-                        <span key={`space-${idx}-${lastIndex}`} style={{ whiteSpace: 'pre' }}>
-                            {line.substring(lastIndex, match.index)}
-                        </span>
-                    )
-                }
-
-                // Get current global chord index and increment for next chord
-                const currentChordIndex = chordIndexRef.current
-                const isFundamental = isFundamentalChord(match[0])
-                const isVisible = currentChordIndex < 3
-
-                // Render chord with appropriate styling
-                parts.push(
-                    <span
-                        key={`chord-${idx}-${match.index}`}
-                        className={`inline-block px-2 py-1 mx-0.5 rounded-lg border ${isFundamental
-                            ? 'bg-gradient-to-br from-accent-purple to-accent-cyan text-white font-bold shadow-glow-sm border-accent-purple/30'
-                            : 'glass border-neutral-600 text-neutral-300 font-semibold'
-                            } ${!isVisible ? 'blur-sm opacity-40 select-none' : ''}`}
-                        style={{ fontSize: fontSize === 'text-xs' ? '11px' : fontSize === 'text-sm' ? '12px' : '13px' }}
-                    >
-                        {match[0]}
-                    </span>
-                )
-
-                chordIndexRef.current++
-                lastIndex = match.index + match[0].length
-            }
-
-            // Add remaining text
-            if (lastIndex < line.length) {
-                parts.push(
-                    <span key={`end-${idx}-${lastIndex}`} style={{ whiteSpace: 'pre' }}>
-                        {line.substring(lastIndex)}
-                    </span>
-                )
-            }
-
-            return <>{parts}</>
-        }
-
-        // Lyrics lines - block after first verse
-        return renderBlockedLyrics(line, idx)
-    }, [fontSize, isChordLine])
+    const formattedOutput = result?.formatted_output || ''
+    const lines = useMemo(() => (formattedOutput ? formattedOutput.split('\n') : []), [formattedOutput])
 
     // Render lyrics - show first verse fully, then block rest
-    const renderBlockedLyrics = (text, lineIndex) => {
+    const renderBlockedLyrics = useCallback((text, lineIndex) => {
         if (!text || text.trim().startsWith('[') || text.trim() === '') {
             return <span key={lineIndex} className="text-neutral-200">{text}</span>
         }
@@ -132,6 +43,114 @@ export default function DemoPreview({ result, onUnlock }) {
                 </span>
             </span>
         )
+    }, [])
+
+    // Check if line contains chords
+    const isChordLine = useCallback((line) => {
+        if (line.startsWith('Title:') || line.startsWith('Key:') || line.trim().startsWith('[')) {
+            return false
+        }
+        const tokens = line.trim().split(/\s+/)
+        if (tokens.length === 0) return false
+
+        // Simple check: if most tokens look like chords
+        const chordPattern = /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?$/
+        const chordCount = tokens.filter(t => chordPattern.test(t)).length
+        return chordCount > 0 && chordCount / tokens.length > 0.5
+    }, [])
+
+    const chordCountBeforeLine = useMemo(() => {
+        const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
+
+        return lines.reduce(
+            (state, line) => {
+                const before = state.count
+                const matches = isChordLine(line) ? line.match(chordRegex) : null
+                const add = matches ? matches.length : 0
+                return {
+                    count: before + add,
+                    arr: [...state.arr, before],
+                }
+            },
+            { count: 0, arr: [] },
+        ).arr
+    }, [lines, isChordLine])
+
+    // Render a single line with proper global chord counting
+    const renderLine = useCallback((line, idx) => {
+        // Title and Key - show normally
+        if (line.startsWith('Title:')) {
+            return <span key={idx} className="font-bold text-gradient text-xl">{line}</span>
+        }
+        if (line.startsWith('Key:')) {
+            return <span key={idx} className="font-semibold text-accent-cyan">{line}</span>
+        }
+
+        // Section headers - show normally
+        if (line.trim().startsWith('[')) {
+            return <span key={idx} className="font-bold text-accent-purple">{line}</span>
+        }
+
+        // Chord lines - show first 3 chords clearly GLOBALLY
+        if (isChordLine(line)) {
+            const chordRegex = /[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?/g
+            const parts = []
+            let lastIndex = 0
+            let match
+
+            const baseChordIndex = chordCountBeforeLine[idx] || 0
+            let localChordIndex = 0
+
+            while ((match = chordRegex.exec(line)) !== null) {
+                // Add spacing before chord
+                if (match.index > lastIndex) {
+                    parts.push(
+                        <span key={`space-${idx}-${lastIndex}`} style={{ whiteSpace: 'pre' }}>
+                            {line.substring(lastIndex, match.index)}
+                        </span>
+                    )
+                }
+
+                const currentChordIndex = baseChordIndex + localChordIndex
+                const isFundamental = isFundamentalChord(match[0])
+                const isVisible = currentChordIndex < 3
+
+                // Render chord with appropriate styling
+                parts.push(
+                    <span
+                        key={`chord-${idx}-${match.index}`}
+                        className={`inline-block px-2 py-1 mx-0.5 rounded-lg border ${isFundamental
+                            ? 'bg-gradient-to-br from-accent-purple to-accent-cyan text-white font-bold shadow-glow-sm border-accent-purple/30'
+                            : 'glass border-neutral-600 text-neutral-300 font-semibold'
+                            } ${!isVisible ? 'blur-sm opacity-40 select-none' : ''}`}
+                        style={{ fontSize: fontSize === 'text-xs' ? '11px' : fontSize === 'text-sm' ? '12px' : '13px' }}
+                    >
+                        {match[0]}
+                    </span>
+                )
+
+                localChordIndex++
+                lastIndex = match.index + match[0].length
+            }
+
+            // Add remaining text
+            if (lastIndex < line.length) {
+                parts.push(
+                    <span key={`end-${idx}-${lastIndex}`} style={{ whiteSpace: 'pre' }}>
+                        {line.substring(lastIndex)}
+                    </span>
+                )
+            }
+
+            return <>{parts}</>
+        }
+
+        // Lyrics lines - block after first verse
+        return renderBlockedLyrics(line, idx)
+    }, [chordCountBeforeLine, fontSize, isChordLine, renderBlockedLyrics])
+
+    if (!formattedOutput) {
+        return null
     }
 
     return (
@@ -155,8 +174,6 @@ export default function DemoPreview({ result, onUnlock }) {
                     <select
                         value={fontSize}
                         onChange={(e) => {
-                            // Reset chord index counter when font changes
-                            chordIndexRef.current = 0
                             setFontSize(e.target.value)
                         }}
                         className="text-xs font-semibold px-3 py-1.5 glass rounded-lg text-neutral-200 cursor-pointer hover:border-accent-purple/50 transition-colors"

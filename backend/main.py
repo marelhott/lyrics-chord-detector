@@ -24,11 +24,51 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS middleware
+ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"}
+MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
+
+
+def _parse_allowed_origins() -> tuple[list[str], bool]:
+    raw = os.getenv("ALLOWED_ORIGINS", "*").strip()
+    if raw in {"", "*"}:
+        return ["*"], False
+
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    return origins, True
+
+
+async def _save_upload_to_tempfile(upload: UploadFile) -> tuple[str, int]:
+    suffix = ""
+    if upload.filename:
+        suffix = os.path.splitext(upload.filename)[1]
+
+    total = 0
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        while True:
+            chunk = await upload.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_FILE_SIZE_BYTES:
+                temp_path = temp_file.name
+                temp_file.close()
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File too large. Maximum size is {MAX_FILE_SIZE_BYTES / 1024 / 1024}MB",
+                )
+            temp_file.write(chunk)
+
+        return temp_file.name, total
+
+
+allowed_origins, allow_credentials = _parse_allowed_origins()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production: set specific domains
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -102,26 +142,13 @@ async def process_demo(
     print(f"{'='*60}")
     
     # Validate file type
-    if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
+    if file.content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Only MP3 and WAV files are supported."
         )
-    
-    # Save to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-        content = await file.read()
-        
-        # Check file size (max 50MB)
-        MAX_FILE_SIZE = 50 * 1024 * 1024
-        if len(content) > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB"
-            )
-        
-        temp_file.write(content)
-        temp_path = temp_file.name
+
+    temp_path, file_size = await _save_upload_to_tempfile(file)
     
     try:
         print(f"\n{'='*60}")
@@ -238,33 +265,18 @@ async def process_audio(
         raise HTTPException(status_code=400, detail="Invalid quality. Use 'free' or 'premium'")
         
     # Validate file type
-    if not file.content_type in ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"]:
+    if file.content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Only MP3 and WAV files are supported."
         )
-    
-    # Validate file size (max 50MB)
-    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-    
-    # Save to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-        content = await file.read()
-        
-        # Check file size
-        if len(content) > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB"
-            )
-        
-        temp_file.write(content)
-        temp_path = temp_file.name
+
+    temp_path, file_size = await _save_upload_to_tempfile(file)
     
     try:
         print(f"\n{'='*60}")
         print(f"Processing: {file.filename}")
-        print(f"Size: {len(content) / 1024 / 1024:.2f}MB")
+        print(f"Size: {file_size / 1024 / 1024:.2f}MB")
         print(f"Language: {language or 'auto-detect'}")
         print(f"Quality: {quality.upper()}")
         print(f"{'='*60}\n")
@@ -361,11 +373,13 @@ async def detect_language(file: UploadFile = File(...)):
     Returns:
         Detected language code
     """
-    # Save to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-        content = await file.read()
-        temp_file.write(content)
-        temp_path = temp_file.name
+    if file.content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only MP3 and WAV files are supported.",
+        )
+
+    temp_path, _file_size = await _save_upload_to_tempfile(file)
     
     try:
         language = whisper_service.detect_language(temp_path)

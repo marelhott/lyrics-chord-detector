@@ -25,7 +25,6 @@ export default function ExportOptions({ result }) {
         const { formatted_output, filename } = result
 
         const doc = new jsPDF()
-        const pageWidth = doc.internal.pageSize.getWidth()
         const pageHeight = doc.internal.pageSize.getHeight()
         const margin = 20
         const lineHeight = 6

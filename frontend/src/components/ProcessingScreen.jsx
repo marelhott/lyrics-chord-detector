@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Check, Mic } from 'lucide-react';
 
+function pseudoRandom01(seed) {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
+}
+
 const steps = [
   'Extracting vocals',
   'Detecting lyrics',
@@ -36,8 +41,9 @@ export function ProcessingScreen() {
         >
           {/* Animated waveform bars */}
           {Array.from({ length: 80 }).map((_, i) => {
-            const height = Math.random() * 150 + 20;
-            const delay = Math.random() * 2;
+            const height = pseudoRandom01(i + 1) * 150 + 20;
+            const delay = pseudoRandom01(i + 101) * 2;
+            const opacity = 0.3 + pseudoRandom01(i + 1001) * 0.4;
             return (
               <rect
                 key={i}
@@ -50,7 +56,7 @@ export function ProcessingScreen() {
                 style={{
                   animationDelay: `${delay}s`,
                   animationDuration: '1.5s',
-                  opacity: 0.3 + Math.random() * 0.4
+                  opacity
                 }}
               />
             );

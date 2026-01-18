@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { FileText, FileDown, FileJson, Plus, Minus, ChevronRight, ArrowLeft, Download } from 'lucide-react';
+import UltimateGuitarPreview from './UltimateGuitarPreview';
 
 // Adapter to transform generic songData into the component's expected format
 function useAdaptedData(songData) {
@@ -49,15 +50,13 @@ function useAdaptedData(songData) {
   }, [songData]);
 }
 
-export function ResultsScreen({ fileName, songData, onExport, onNewAnalysis }) {
+export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAnalysis }) {
   const [selectedSection, setSelectedSection] = useState(null);
   const [showChords, setShowChords] = useState(true);
   const [fontSize, setFontSize] = useState(16);
+  const [viewMode, setViewMode] = useState(rawResult?.formatted_output ? 'ug' : 'structured');
 
   const lyricsData = useAdaptedData(songData);
-
-  // Derive song structure names from the adapted data
-  const songStructure = lyricsData.map(s => s.section);
 
   // Calculate stats for each section
   const getSectionStats = (sectionName) => {
@@ -137,21 +136,21 @@ export function ResultsScreen({ fileName, songData, onExport, onNewAnalysis }) {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={onExport}
+              onClick={() => onExport('txt')}
               className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
             >
               <FileText className="w-4 h-4" />
               Export TXT
             </button>
             <button
-              onClick={onExport}
+              onClick={() => onExport('pdf')}
               className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
             >
               <FileDown className="w-4 h-4" />
               Export PDF
             </button>
             <button
-              onClick={onExport}
+              onClick={() => onExport('json')}
               className="px-4 py-2 bg-[#0f1612] border border-[#1a2520] text-gray-300 rounded-lg hover:border-[#2a3530] transition-all text-sm flex items-center gap-2"
             >
               <FileJson className="w-4 h-4" />
@@ -249,6 +248,29 @@ export function ResultsScreen({ fileName, songData, onExport, onNewAnalysis }) {
             {/* Controls */}
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-[#1a2520]">
               <div className="flex items-center gap-4">
+                {rawResult?.formatted_output && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViewMode('ug')}
+                      className={`px-4 py-2 rounded-lg border transition-all text-sm ${viewMode === 'ug'
+                        ? 'bg-[#1a2520] border-[#a4e887] text-[#a4e887]'
+                        : 'bg-[#0f1612] border-[#1a2520] text-gray-400 hover:border-[#2a3530]'
+                        }`}
+                    >
+                      Formatted
+                    </button>
+                    <button
+                      onClick={() => setViewMode('structured')}
+                      className={`px-4 py-2 rounded-lg border transition-all text-sm ${viewMode === 'structured'
+                        ? 'bg-[#1a2520] border-[#a4e887] text-[#a4e887]'
+                        : 'bg-[#0f1612] border-[#1a2520] text-gray-400 hover:border-[#2a3530]'
+                        }`}
+                    >
+                      Structured
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={() => setShowChords(!showChords)}
                   className={`px-4 py-2 rounded-lg border transition-all text-sm ${showChords
@@ -277,50 +299,53 @@ export function ResultsScreen({ fileName, songData, onExport, onNewAnalysis }) {
               </div>
             </div>
 
-            {/* Lyrics Content */}
-            <div className="space-y-12">
-              {lyricsData.map((section, sectionIndex) => (
-                <div
-                  key={sectionIndex}
-                  className={`transition-all ${selectedSection === null || selectedSection === section.section
+            {viewMode === 'ug' && rawResult?.formatted_output ? (
+              <UltimateGuitarPreview result={rawResult} />
+            ) : (
+              <div className="space-y-12">
+                {lyricsData.map((section, sectionIndex) => (
+                  <div
+                    key={sectionIndex}
+                    className={`transition-all ${selectedSection === null || selectedSection === section.section
                       ? 'opacity-100'
                       : 'opacity-30'
-                    }`}
-                >
-                  <h3 className="text-[#a4e887] font-medium mb-6 text-sm tracking-wide uppercase">
-                    {section.section}
-                  </h3>
-                  <div className="space-y-6 font-mono">
-                    {section.lines.map((line, lineIndex) => (
-                      <div key={lineIndex} className="relative">
-                        {showChords && (
-                          <div className="mb-1 relative" style={{ fontSize: `${fontSize}px`, height: `${fontSize + 8}px` }}>
-                            {line.chords.map((chord, chordIndex) => (
-                              <span
-                                key={chordIndex}
-                                className="absolute px-2 py-0.5 bg-[#0f1612] border border-[#1a2520] rounded text-[#a4e887] inline-block whitespace-nowrap"
-                                style={{
-                                  left: `${line.positions[chordIndex] * 0.6}em`,
-                                  fontSize: `${fontSize}px`
-                                }}
-                              >
-                                {chord}
-                              </span>
-                            ))}
+                      }`}
+                  >
+                    <h3 className="text-[#a4e887] font-medium mb-6 text-sm tracking-wide uppercase">
+                      {section.section}
+                    </h3>
+                    <div className="space-y-6 font-mono">
+                      {section.lines.map((line, lineIndex) => (
+                        <div key={lineIndex} className="relative">
+                          {showChords && (
+                            <div className="mb-1 relative" style={{ fontSize: `${fontSize}px`, height: `${fontSize + 8}px` }}>
+                              {line.chords.map((chord, chordIndex) => (
+                                <span
+                                  key={chordIndex}
+                                  className="absolute px-2 py-0.5 bg-[#0f1612] border border-[#1a2520] rounded text-[#a4e887] inline-block whitespace-nowrap"
+                                  style={{
+                                    left: `${line.positions[chordIndex] * 0.6}em`,
+                                    fontSize: `${fontSize}px`
+                                  }}
+                                >
+                                  {chord}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div
+                            className="text-gray-300 whitespace-pre"
+                            style={{ fontSize: `${fontSize}px` }}
+                          >
+                            {line.lyrics}
                           </div>
-                        )}
-                        <div
-                          className="text-gray-300 whitespace-pre"
-                          style={{ fontSize: `${fontSize}px` }}
-                        >
-                          {line.lyrics}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </main>
       </div>

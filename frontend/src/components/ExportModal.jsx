@@ -1,14 +1,94 @@
 import { X, FileText, FileDown, FileJson, Download } from 'lucide-react';
 import { useState } from 'react';
+import { jsPDF } from 'jspdf'
 
-export function ExportModal({ onClose }) {
-  const [selectedFormat, setSelectedFormat] = useState('txt');
+export function ExportModal({ result, defaultFormat, onClose }) {
+  const [selectedFormat, setSelectedFormat] = useState(defaultFormat || 'txt');
+
+  const filenameBase = (result?.filename || 'song').replace(/\.(mp3|wav)$/i, '')
+
+  const exportAsTXT = () => {
+    const formattedOutput = result?.formatted_output || ''
+    const blob = new Blob([formattedOutput], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filenameBase}_chords.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportAsJSON = () => {
+    const { filename: _filename, ...data } = result || {}
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filenameBase}_data.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportAsPDF = () => {
+    const formattedOutput = result?.formatted_output || ''
+    const doc = new jsPDF()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margin = 20
+    const lineHeight = 6
+    let yPosition = margin
+
+    doc.setFontSize(16)
+    doc.setFont('courier', 'bold')
+    doc.text('Song Chords & Lyrics', margin, yPosition)
+    yPosition += 10
+
+    doc.setFontSize(9)
+    doc.setFont('courier', 'normal')
+    doc.text(`File: ${result?.filename || 'song'}`, margin, yPosition)
+    yPosition += 10
+
+    doc.setFontSize(10)
+    doc.setFont('courier', 'normal')
+
+    const lines = formattedOutput.split('\n')
+    for (const line of lines) {
+      if (yPosition + lineHeight > pageHeight - margin) {
+        doc.addPage()
+        yPosition = margin
+      }
+
+      if (line.trim().startsWith('[')) {
+        doc.setFont('courier', 'bold')
+        doc.text(line, margin, yPosition)
+        doc.setFont('courier', 'normal')
+      } else {
+        doc.text(line, margin, yPosition)
+      }
+
+      yPosition += lineHeight
+    }
+
+    doc.save(`${filenameBase}_chords.pdf`)
+  }
 
   const handleExport = () => {
-    // Simulate export - in real app this would trigger download
-    alert(`Exporting as ${selectedFormat.toUpperCase()}...`);
-    onClose();
-  };
+    if (!result) {
+      return
+    }
+
+    if (selectedFormat === 'txt') exportAsTXT()
+    if (selectedFormat === 'pdf') exportAsPDF()
+    if (selectedFormat === 'json') exportAsJSON()
+
+    onClose()
+  }
+
+  const canExportText = Boolean(result?.formatted_output)
+  const canExport = Boolean(result) && (selectedFormat === 'json' || canExportText)
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -129,7 +209,11 @@ export function ExportModal({ onClose }) {
             </button>
             <button
               onClick={handleExport}
-              className="flex-1 px-4 py-3 bg-[#a4e887] text-[#0a0f0d] rounded-lg hover:bg-[#b5f497] transition-all font-medium flex items-center justify-center gap-2"
+              disabled={!canExport}
+              className={`flex-1 px-4 py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2 ${canExport
+                  ? 'bg-[#a4e887] text-[#0a0f0d] hover:bg-[#b5f497]'
+                  : 'bg-[#2a3530] text-gray-500 cursor-not-allowed'
+                }`}
             >
               <Download className="w-4 h-4" />
               Download
