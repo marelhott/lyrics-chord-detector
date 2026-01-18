@@ -248,8 +248,8 @@ class ChordDetectionService:
             # Load audio
             y, sr = librosa.load(audio_path, sr=22050)
             
-            # Extract chroma features (STFT is faster than CQT)
-            chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=512)
+            # Extract chroma features
+            chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=512)
             
             hop_length = 512
             frame_duration = hop_length / sr
