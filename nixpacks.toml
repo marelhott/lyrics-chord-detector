@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib"]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas"]
 
 [phases.install]
 cmds = [
