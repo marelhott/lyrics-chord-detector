@@ -17,8 +17,8 @@ export function ProcessingScreen({ trackInfo }) {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    // Variable delay: 5s for first 3 steps, fast for others
-    const delay = currentStep < 3 ? 5000 : 700;
+    // Variable delay: 10s for first 3 steps, fast for others
+    const delay = currentStep < 3 ? 10000 : 700;
 
     const timeout = setTimeout(() => {
       setCurrentStep(prev => {
@@ -84,10 +84,10 @@ export function ProcessingScreen({ trackInfo }) {
         </div>
 
         {/* Status Text */}
-        {trackInfo && trackInfo.artistName !== 'Unknown Artist' && trackInfo.trackName !== 'Unknown Track' ? (
+        {trackInfo && trackInfo.trackName && trackInfo.trackName !== 'Unknown Track' ? (
           <>
             <h2 className="text-xl font-medium text-muted-foreground mb-4">Generating:</h2>
-            <p className="text-2xl font-bold text-foreground mb-2">{trackInfo.artistName}</p>
+            <p className="text-2xl font-bold text-foreground mb-2">{trackInfo.artistName || 'Unknown Artist'}</p>
             <p className="text-3xl font-bold text-primary mb-12">{trackInfo.trackName}</p>
           </>
         ) : (
