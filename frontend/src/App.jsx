@@ -14,6 +14,7 @@ export default function App() {
   const [rawResult, setRawResult] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
+  const [trackInfo, setTrackInfo] = useState(null); // { trackName, artistName }
 
   const handleFileSelect = async (selectedFile) => {
     setFileName(selectedFile.name.replace(/\.(mp3|wav)$/i, ''));
@@ -61,7 +62,33 @@ export default function App() {
   };
 
   const handleSpotifySubmit = async (spotifyUrl) => {
-    setFileName('Spotify Track');
+    // Extract track info from URL for display
+    try {
+      const response = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`);
+      const data = await response.json();
+      const title = data.title || '';
+
+      let trackName = 'Unknown Track';
+      let artistName = 'Unknown Artist';
+
+      if (title.includes('·')) {
+        const parts = title.split('·');
+        trackName = parts[0].trim();
+        artistName = parts[1]?.trim() || 'Unknown Artist';
+      } else if (title.includes(' - ')) {
+        const parts = title.split(' - ');
+        trackName = parts[0].trim();
+        artistName = parts[1]?.trim() || 'Unknown Artist';
+      }
+
+      setTrackInfo({ trackName, artistName });
+      setFileName(`${trackName} - ${artistName}`);
+    } catch (err) {
+      console.error('Failed to extract track info:', err);
+      setTrackInfo({ trackName: 'Spotify Track', artistName: '' });
+      setFileName('Spotify Track');
+    }
+
     setCurrentScreen('processing');
 
     const formData = new FormData();
@@ -118,7 +145,7 @@ export default function App() {
       )}
 
       {currentScreen === 'processing' && (
-        <ProcessingScreen />
+        <ProcessingScreen trackInfo={trackInfo} />
       )}
 
       {currentScreen === 'result' && songData && (
