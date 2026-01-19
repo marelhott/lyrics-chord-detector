@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { FileText, FileDown, FileJson, Plus, Minus, ChevronRight, ArrowLeft } from 'lucide-react';
 import UltimateGuitarPreview from './UltimateGuitarPreview';
+import { ChordDiagram } from './ChordDiagram';
 
 // Adapter to transform generic songData into the component's expected format
 function useAdaptedData(songData) {
@@ -60,36 +61,28 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
 
   // Calculate stats for each section
   const getSectionStats = (sectionName) => {
-    // Note: multiple sections might have same name (Chorus), so we filter all of them
-    // But reference UI treats them as distinct items in nav? 
-    // The reference `songStructure` array was just strings. If we have duplicate names, 
-    // we need to be careful with keys. 
-    // My adapted `lyricsData` is an array corresponding 1:1 to sections.
-    // So we should find the specific section index from the nav map.
-
-    // For simplicity, let's filter by name as in original code
     const sectionItems = lyricsData.filter(s => s.section === sectionName);
 
     const totalWords = sectionItems.reduce((acc, s) =>
       acc + s.lines.reduce((wordAcc, line) =>
-        wordAcc + line.lyrics.split(' ').length, 0), 0);
+        wordAcc + line.lyrics.split(' ').filter(w => w.trim()).length, 0), 0);
 
-    const totalChords = sectionItems.reduce((acc, s) =>
-      acc + s.lines.reduce((chordAcc, line) =>
-        chordAcc + line.chords.length, 0), 0);
+    // Count unique chords only
+    const uniqueChords = new Set();
+    sectionItems.forEach(s => {
+      s.lines.forEach(line => {
+        line.chords.forEach(chord => uniqueChords.add(chord));
+      });
+    });
 
-    return { words: totalWords, chords: totalChords };
+    return { words: totalWords, chords: uniqueChords.size };
   };
 
   // Calculate total stats
   const totalStats = useMemo(() => {
     const totalWords = lyricsData.reduce((acc, s) =>
       acc + s.lines.reduce((wordAcc, line) =>
-        wordAcc + line.lyrics.split(' ').length, 0), 0);
-
-    const totalChords = lyricsData.reduce((acc, s) =>
-      acc + s.lines.reduce((chordAcc, line) =>
-        chordAcc + line.chords.length, 0), 0);
+        wordAcc + line.lyrics.split(' ').filter(w => w.trim()).length, 0), 0);
 
     const allChords = lyricsData.reduce((acc, s) => {
       s.lines.forEach(line => {
@@ -100,13 +93,19 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
 
     return {
       words: totalWords,
-      chords: totalChords,
       uniqueChords: Array.from(allChords).sort()
     };
   }, [lyricsData]);
 
-  // Handle section clicking - toggle off if same clicked
-  const handleSectionClick = (sectionName) => {
+  // Handle section clicking - scroll to section and highlight
+  const handleSectionClick = (sectionName, sectionIndex) => {
+    // Scroll to the section
+    const sectionElement = document.getElementById(`section-${sectionIndex}`);
+    if (sectionElement) {
+      sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Highlight the section
     if (selectedSection === sectionName) {
       setSelectedSection(null);
     } else {
@@ -171,71 +170,47 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
         {/* Left Sidebar - Song Structure */}
         <aside className="w-64 border-r border-border bg-background p-6 overflow-y-auto">
           <h2 className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">SONG STRUCTURE</h2>
-          <nav className="space-y-1">
-            {/* 
-              Note: if duplicate section names exist (e.g. Chorus appearing multiple times),
-              mapping by index is safer for rendering the list, but logic uses name for selection.
-            */}
-            {lyricsData.map((sectionData, index) => {
-              const sectionName = sectionData.section;
-              // We calculate stats specific to this INSTANCE of the section for the sidebar?
-              // The original code calculated stats for ALL sections with that name.
-              // Let's stick to original behavior (summing by name) for the stats.
-              const stats = getSectionStats(sectionName);
-
-              return (
+          <div className="space-y-2">
+            {lyricsData.map((sectionData, index) => (
+              <div key={index} className="flex items-center gap-2">
                 <button
-                  key={`${sectionName}-${index}`}
-                  onClick={() => handleSectionClick(sectionName)}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-all group ${selectedSection === sectionName
-                    ? 'bg-muted text-primary'
-                    : 'text-muted-foreground hover:bg-card hover:text-foreground'
+                  onClick={() => handleSectionClick(sectionData.section, index)}
+                  className={`text-sm font-medium transition-colors ${selectedSection === sectionData.section
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium">{sectionName}</span>
-                    {selectedSection === sectionName && (
-                      <ChevronRight className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="flex gap-3 text-xs text-muted-foreground/70">
-                    {/* These stats are aggregated for all sections with this name */}
-                    <span>{stats.words} words</span>
-                    <span>·</span>
-                    <span>{stats.chords} chords</span>
-                  </div>
+                  {sectionData.section}
                 </button>
-              );
-            })}
-          </nav>
+                {index < lyricsData.length - 1 && (
+                  <span className="text-muted-foreground/40">↓</span>
+                )}
+              </div>
+            ))}
+          </div>
 
           {/* Total Stats Section */}
           <div className="mt-8 pt-6 border-t border-border">
-            <h2 className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">TOTAL STATS</h2>
+            <h2 className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">STATISTICS</h2>
 
             <div className="bg-card border border-border rounded-lg p-4 mb-4">
               <div className="flex justify-between items-center mb-3">
                 <div>
                   <div className="text-2xl font-bold text-foreground">{totalStats.words}</div>
-                  <div className="text-xs text-muted-foreground">Total Words</div>
+                  <div className="text-xs text-muted-foreground">Words</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-primary">{totalStats.chords}</div>
-                  <div className="text-xs text-muted-foreground">Total Chords</div>
+                  <div className="text-2xl font-bold text-primary">{totalStats.uniqueChords.length}</div>
+                  <div className="text-xs text-muted-foreground">Unique Chords</div>
                 </div>
               </div>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-xs font-medium text-muted-foreground mb-3 tracking-wide">CHORDS USED</h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {totalStats.uniqueChords.map((chord) => (
-                  <span
-                    key={chord}
-                    className="px-2.5 py-1.5 bg-muted border border-border rounded text-primary text-sm font-mono font-medium hover:bg-muted/80 transition-colors"
-                  >
-                    {chord}
-                  </span>
+                  <ChordDiagram key={chord} chord={chord} />
                 ))}
               </div>
             </div>
@@ -306,7 +281,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                 {lyricsData.map((section, sectionIndex) => (
                   <div
                     key={sectionIndex}
-                    className={`transition-all ${selectedSection === null || selectedSection === section.section
+                    id={`section-${sectionIndex}`}
+                    className={`transition-all scroll-mt-8 ${selectedSection === null || selectedSection === section.section
                       ? 'opacity-100'
                       : 'opacity-30'
                       }`}
@@ -322,10 +298,12 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                               {line.chords.map((chord, chordIndex) => (
                                 <span
                                   key={chordIndex}
-                                  className="absolute px-2 py-0.5 bg-card border border-border rounded text-primary inline-block whitespace-nowrap"
+                                  className="absolute px-2.5 py-1 bg-card border border-border rounded-md text-primary inline-block whitespace-nowrap font-medium"
                                   style={{
                                     left: `${line.positions[chordIndex] * 0.6}em`,
-                                    fontSize: `${fontSize}px`
+                                    fontSize: `${Math.max(12, fontSize - 2)}px`,
+                                    minWidth: '2.5em',
+                                    textAlign: 'center'
                                   }}
                                 >
                                   {chord}

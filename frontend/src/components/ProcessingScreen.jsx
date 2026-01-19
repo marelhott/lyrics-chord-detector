@@ -13,22 +13,24 @@ const steps = [
   'Aligning song structure'
 ];
 
-export function ProcessingScreen() {
+export function ProcessingScreen({ trackInfo }) {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    // We increment step every 700ms to mock progress visual
-    const interval = setInterval(() => {
+    // Variable delay: 10s for first 3 steps, fast for others
+    const delay = currentStep < 3 ? 10000 : 700;
+
+    const timeout = setTimeout(() => {
       setCurrentStep(prev => {
         if (prev < steps.length - 1) {
           return prev + 1;
         }
         return prev;
       });
-    }, 6000);
+    }, delay);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearTimeout(timeout);
+  }, [currentStep]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
@@ -82,8 +84,18 @@ export function ProcessingScreen() {
         </div>
 
         {/* Status Text */}
-        <h2 className="text-3xl font-bold text-foreground mb-3">Analyzing track…</h2>
-        <p className="text-muted-foreground mb-12">This usually takes under a minute</p>
+        {trackInfo && trackInfo.trackName && trackInfo.trackName !== 'Unknown Track' ? (
+          <>
+            <h2 className="text-xl font-medium text-muted-foreground mb-4">Generating:</h2>
+            <p className="text-2xl font-bold text-foreground mb-2">{trackInfo.artistName || 'Unknown Artist'}</p>
+            <p className="text-3xl font-bold text-primary mb-12">{trackInfo.trackName}</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-3xl font-bold text-foreground mb-3">Analyzing track…</h2>
+            <p className="text-muted-foreground mb-12">This usually takes under a minute</p>
+          </>
+        )}
 
         {/* Progress Steps */}
         <div className="bg-card border border-border rounded-xl p-8">

@@ -14,6 +14,7 @@ export default function App() {
   const [rawResult, setRawResult] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
+  const [trackInfo, setTrackInfo] = useState(null); // { trackName, artistName }
 
   const handleFileSelect = async (selectedFile) => {
     setFileName(selectedFile.name.replace(/\.(mp3|wav)$/i, ''));
@@ -60,6 +61,76 @@ export default function App() {
     }
   };
 
+  const handleSpotifySubmit = async (spotifyUrl) => {
+    // Extract track info from URL for display
+    try {
+      const response = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`);
+      const data = await response.json();
+      const title = data.title || '';
+
+      let trackName = 'Unknown Track';
+      let artistName = 'Unknown Artist';
+
+      if (title.includes('·')) {
+        const parts = title.split('·');
+        trackName = parts[0].trim();
+        artistName = parts[1]?.trim() || 'Unknown Artist';
+      } else if (title.includes(' - ')) {
+        const parts = title.split(' - ');
+        trackName = parts[0].trim();
+        artistName = parts[1]?.trim() || 'Unknown Artist';
+      }
+
+      setTrackInfo({ trackName, artistName });
+      setFileName(`${trackName} - ${artistName}`);
+    } catch (err) {
+      console.error('Failed to extract track info:', err);
+      setTrackInfo({ trackName: 'Spotify Track', artistName: '' });
+      setFileName('Spotify Track');
+    }
+
+    setCurrentScreen('processing');
+
+    const formData = new FormData();
+    formData.append('spotify_url', spotifyUrl);
+
+    try {
+      const response = await fetch(`${API_URL}/download-spotify`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Download failed');
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON error response:", text);
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}...`);
+        }
+      }
+
+      const backendData = await response.json();
+      console.log('Backend Data:', backendData);
+
+      setFileName(backendData.title || 'Spotify Track');
+      setRawResult(backendData);
+
+      const transformedData = transformSongData(backendData);
+      console.log('Transformed Data:', transformedData);
+
+      setSongData(transformedData);
+      setCurrentScreen('result');
+
+    } catch (err) {
+      console.error('Error downloading from Spotify:', err);
+      alert(`Error: ${err.message}`);
+      setCurrentScreen('upload');
+    }
+  };
+
   const handleNewAnalysis = () => {
     setFileName('');
     setSongData(null);
@@ -70,11 +141,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {currentScreen === 'upload' && (
-        <UploadScreen onFileSelect={handleFileSelect} />
+        <UploadScreen onFileSelect={handleFileSelect} onSpotifySubmit={handleSpotifySubmit} />
       )}
 
       {currentScreen === 'processing' && (
-        <ProcessingScreen />
+        <ProcessingScreen trackInfo={trackInfo} />
       )}
 
       {currentScreen === 'result' && songData && (

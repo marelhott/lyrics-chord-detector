@@ -18,6 +18,7 @@ from services.chord_detection import get_chord_service
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
 from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
+from services.spotify_service import get_spotify_service
 
 app = FastAPI(
     title="Lyrics & Chord Detector API",
@@ -371,6 +372,96 @@ async def process_audio(
         # Clean up temporary file
         if os.path.exists(temp_path):
             os.unlink(temp_path)
+
+
+@api_router.post("/download-spotify")
+async def download_spotify(spotify_url: str = Form(...)):
+    """
+    Download song from Spotify URL and process it.
+    
+    Args:
+        spotify_url: Spotify track URL
+    
+    Returns:
+        JSON with processing results
+    """
+    try:
+        print(f"\n{'='*60}")
+        print(f"📥 Downloading from Spotify: {spotify_url}")
+        print(f"{'='*60}\n")
+        
+        # Download from Spotify
+        spotify_service = get_spotify_service()
+        audio_path = spotify_service.download_from_url(spotify_url)
+        
+        try:
+            # Process the downloaded file
+            print("Step 1/5: Transcribing audio...")
+            transcription = whisper_service.transcribe(audio_path)
+            
+            print("Step 2/5: Detecting chords...")
+            chords = chord_service.detect_chords(audio_path)
+            
+            # Detect key
+            key = chord_service.detect_key(audio_path)
+            
+            print("Step 3/5: Detecting song structure...")
+            structure = structure_service.detect_structure(
+                audio_path,
+                transcription["segments"],
+                chords
+            )
+            
+            print("Step 4/5: Aligning chords with lyrics...")
+            aligned_chords = alignment_service.align_chords_with_lyrics(
+                transcription["segments"],
+                chords
+            )
+            
+            print("Step 5/5: Formatting output...")
+            
+            # Extract title from Spotify metadata if available
+            title = os.path.splitext(os.path.basename(audio_path))[0].replace("_", " ").replace("-", " ").title()
+            
+            formatted_output = alignment_service.format_ultimate_guitar_style(
+                structure,
+                aligned_chords,
+                title=title,
+                key=key
+            )
+            
+            print(f"\n✅ Processing complete!")
+            print(f"{'='*60}\n")
+            
+            return JSONResponse(content={
+                "success": True,
+                "filename": os.path.basename(audio_path),
+                "text": transcription["text"],
+                "language": transcription["language"],
+                "segments": transcription["segments"],
+                "words": transcription.get("words", []),
+                "chords": chords,
+                "structure": structure,
+                "aligned_chords": aligned_chords,
+                "formatted_output": formatted_output,
+                "title": title,
+                "key": key
+            })
+        
+        finally:
+            # Clean up downloaded file
+            if os.path.exists(audio_path):
+                os.unlink(audio_path)
+    
+    except Exception as e:
+        print(f"\n❌ Error downloading/processing Spotify URL: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Spotify download error: {str(e)}"
+        )
 
 
 @api_router.post("/detect-language")

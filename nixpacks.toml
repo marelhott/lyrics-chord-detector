@@ -1,17 +1,17 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas"]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas", "rustc", "cargo"]
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.11"
 
 [phases.install]
 cmds = [
-    "echo '=== Installing Frontend ==='",
-    "cd frontend && npm ci",
-    "echo '=== Installing Backend ==='",
-    "# Upgrade pip first",
+    "echo '=== Upgrading pip ==='",
     "python3 -m pip install --upgrade pip",
-    "cd backend && pip install -r requirements.txt"
+    "echo '=== Installing Python Dependencies ==='",
+    "pip install -r requirements.txt",
+    "echo '=== Installing Frontend ==='",
+    "cd frontend && npm ci"
 ]
 
 [phases.build]
