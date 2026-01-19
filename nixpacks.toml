@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['nodejs_22', 'python311', 'pip']
+nixPkgs = ['nodejs_22', 'python311']
 nixLibs = ['gcc', 'stdenv.cc.cc.lib', 'zlib']
 
 [phases.install]
