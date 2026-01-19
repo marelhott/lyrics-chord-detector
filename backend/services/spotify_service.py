@@ -24,7 +24,7 @@ class SpotifyDownloadService:
     
     def _extract_track_info_from_url(self, spotify_url: str) -> tuple[str, str]:
         """
-        Extract track info from Spotify URL using Spotify's embed API.
+        Extract track info from Spotify URL using Spotify's oEmbed API.
         Returns (track_name, artist_name)
         """
         # Extract track ID from URL
@@ -34,30 +34,35 @@ class SpotifyDownloadService:
         
         track_id = match.group(1)
         
-        # Use Spotify's public embed API (no auth required)
+        # Use Spotify's public oEmbed API (no auth required)
         import urllib.request
         import json
         
         try:
-            url = f"https://open.spotify.com/embed/track/{track_id}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response:
-                html = response.read().decode('utf-8')
-                
-            # Extract track info from embed page
-            # Look for the title in meta tags
-            title_match = re.search(r'<title>([^<]+)</title>', html)
-            if title_match:
-                title = title_match.group(1)
-                # Format is usually "Track Name - Artist Name | Spotify"
-                if ' - ' in title and ' | ' in title:
-                    parts = title.split(' | ')[0].split(' - ')
-                    if len(parts) >= 2:
-                        return parts[0].strip(), parts[1].strip()
-                    return parts[0].strip(), "Unknown Artist"
-                return title.replace(' | Spotify', '').strip(), "Unknown Artist"
+            # oEmbed endpoint
+            oembed_url = f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{track_id}"
+            req = urllib.request.Request(oembed_url, headers={'User-Agent': 'Mozilla/5.0'})
             
-            raise ValueError("Could not extract track info from Spotify URL")
+            with urllib.request.urlopen(req) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            # Extract title from oEmbed response
+            # Format is usually "Track Name · Artist Name"
+            title = data.get('title', '')
+            
+            if '·' in title:
+                parts = title.split('·')
+                track_name = parts[0].strip()
+                artist_name = parts[1].strip() if len(parts) > 1 else "Unknown Artist"
+                return track_name, artist_name
+            elif ' - ' in title:
+                parts = title.split(' - ')
+                track_name = parts[0].strip()
+                artist_name = parts[1].strip() if len(parts) > 1 else "Unknown Artist"
+                return track_name, artist_name
+            else:
+                # Fallback: use the whole title as track name
+                return title.strip(), "Unknown Artist"
             
         except Exception as e:
             raise ValueError(f"Failed to fetch Spotify track info: {str(e)}")
