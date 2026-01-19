@@ -1,0 +1,26 @@
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+
+[phases.install]
+cmds = [
+    "echo '=== Installing Frontend ==='",
+    "cd frontend && npm ci",
+    "echo '=== Installing Backend ==='",
+    "# Upgrade pip first",
+    "python3 -m pip install --upgrade pip",
+    "cd backend && pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = [
+    "echo '=== Building Frontend ==='",
+    "cd frontend && npm run build",
+    "echo '=== Checking Frontend Build ==='",
+    "ls -la frontend/dist"
+]
+
+[start]
+cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
