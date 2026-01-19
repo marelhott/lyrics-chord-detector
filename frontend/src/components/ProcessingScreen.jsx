@@ -84,12 +84,18 @@ export function ProcessingScreen({ trackInfo }) {
         </div>
 
         {/* Status Text */}
-        <h2 className="text-3xl font-bold text-foreground mb-3">
-          {trackInfo ? `Generating ${trackInfo.trackName}` : 'Analyzing track…'}
-        </h2>
-        <p className="text-muted-foreground mb-12">
-          {trackInfo && trackInfo.artistName ? `by ${trackInfo.artistName}` : 'This usually takes under a minute'}
-        </p>
+        {trackInfo ? (
+          <>
+            <h2 className="text-xl font-medium text-muted-foreground mb-4">Generating:</h2>
+            <p className="text-2xl font-bold text-foreground mb-2">{trackInfo.artistName}</p>
+            <p className="text-3xl font-bold text-primary mb-12">{trackInfo.trackName}</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-3xl font-bold text-foreground mb-3">Analyzing track…</h2>
+            <p className="text-muted-foreground mb-12">This usually takes under a minute</p>
+          </>
+        )}
 
         {/* Progress Steps */}
         <div className="bg-card border border-border rounded-xl p-8">
