@@ -16,6 +16,8 @@ cmds = [
 
 [phases.build]
 cmds = [
+    "echo '=== Cleaning Previous Build ==='",
+    "rm -rf frontend/dist",
     "echo '=== Building Frontend ==='",
     "cd frontend && npm run build",
     "echo '=== Checking Frontend Build ==='",
