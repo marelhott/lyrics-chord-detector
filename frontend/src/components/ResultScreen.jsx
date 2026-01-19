@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { FileText, FileDown, FileJson, Plus, Minus, ChevronRight, ArrowLeft } from 'lucide-react';
 import UltimateGuitarPreview from './UltimateGuitarPreview';
+import { ChordDiagram } from './ChordDiagram';
 
 // Adapter to transform generic songData into the component's expected format
 function useAdaptedData(songData) {
@@ -96,8 +97,15 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
     };
   }, [lyricsData]);
 
-  // Handle section clicking - toggle off if same clicked
-  const handleSectionClick = (sectionName) => {
+  // Handle section clicking - scroll to section and highlight
+  const handleSectionClick = (sectionName, sectionIndex) => {
+    // Scroll to the section
+    const sectionElement = document.getElementById(`section-${sectionIndex}`);
+    if (sectionElement) {
+      sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Highlight the section
     if (selectedSection === sectionName) {
       setSelectedSection(null);
     } else {
@@ -166,10 +174,10 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
             {lyricsData.map((sectionData, index) => (
               <div key={index} className="flex items-center gap-2">
                 <button
-                  onClick={() => handleSectionClick(sectionData.section)}
+                  onClick={() => handleSectionClick(sectionData.section, index)}
                   className={`text-sm font-medium transition-colors ${selectedSection === sectionData.section
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   {sectionData.section}
@@ -200,14 +208,9 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
 
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-xs font-medium text-muted-foreground mb-3 tracking-wide">CHORDS USED</h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {totalStats.uniqueChords.map((chord) => (
-                  <span
-                    key={chord}
-                    className="px-2.5 py-1.5 bg-muted border border-border rounded text-primary text-sm font-mono font-medium hover:bg-muted/80 transition-colors"
-                  >
-                    {chord}
-                  </span>
+                  <ChordDiagram key={chord} chord={chord} />
                 ))}
               </div>
             </div>
@@ -278,7 +281,8 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                 {lyricsData.map((section, sectionIndex) => (
                   <div
                     key={sectionIndex}
-                    className={`transition-all ${selectedSection === null || selectedSection === section.section
+                    id={`section-${sectionIndex}`}
+                    className={`transition-all scroll-mt-8 ${selectedSection === null || selectedSection === section.section
                       ? 'opacity-100'
                       : 'opacity-30'
                       }`}
