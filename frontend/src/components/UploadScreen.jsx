@@ -83,19 +83,18 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
               <Upload className="w-4 h-4" />
               Upload File
             </button>
-            {/* Spotify tab temporarily disabled until spotdl is properly configured
+
             <button
               onClick={() => setActiveTab('spotify')}
-              className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
-                activeTab === 'spotify'
+              className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'spotify'
                   ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
                   : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/50'
-              }`}
+                }`}
             >
               <Music className="w-4 h-4" />
               Spotify URL
             </button>
-            */}
+
           </div>
 
           {/* Upload Card - File Upload */}
