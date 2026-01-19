@@ -4,6 +4,7 @@ Much faster than local Whisper (5-10s vs 5-10min).
 """
 import os
 from openai import OpenAI
+import httpx
 from typing import Optional, Dict, List
 import warnings
 warnings.filterwarnings('ignore')
@@ -27,7 +28,10 @@ class FastWhisperService:
                 "or pass api_key parameter."
             )
         
-        self.client = OpenAI(api_key=self.api_key)
+        # Explicitly create httpx client to bypass potential version conflicts
+        # with 'proxies' vs 'proxy' argument in OpenAI's internal wrapper.
+        self.http_client = httpx.Client()
+        self.client = OpenAI(api_key=self.api_key, http_client=self.http_client)
         self.model = "whisper-1"
         
         print(f"✅ OpenAI Whisper API ready (model: {self.model})")
