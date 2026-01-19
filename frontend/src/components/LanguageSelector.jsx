@@ -16,23 +16,23 @@ export default function LanguageSelector({ value, onChange }) {
     ]
 
     return (
-        <div className="space-y-1">
-            <label className="text-[10px] font-black text-monstera-800 uppercase tracking-widest px-1">
-                Jazyk
+        <div className="space-y-3">
+            <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                Language
             </label>
             <select
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value || null)}
-                className="w-full px-3 py-2 bg-white border border-monstera-200 rounded-md text-xs font-bold text-monstera-800 hover:border-monstera-400 transition-all focus:outline-none focus:ring-2 focus:ring-monstera-400"
+                className="w-full px-4 py-3 glass rounded-xl text-sm font-semibold text-neutral-200 hover:border-accent-purple/50 transition-all focus:outline-none focus:ring-2 focus:ring-accent-purple/50 focus:border-accent-purple cursor-pointer"
             >
                 {languages.map((lang) => (
-                    <option key={lang.code || 'auto'} value={lang.code || ''}>
+                    <option key={lang.code || 'auto'} value={lang.code || ''} className="bg-dark-800">
                         {lang.flag} {lang.name}
                     </option>
                 ))}
             </select>
-            <p className="text-[8px] text-monstera-500 px-1 leading-relaxed">
-                Auto-detect funguje pro většinu jazyků
+            <p className="text-xs text-neutral-500 leading-relaxed">
+                Auto-detect works for most languages
             </p>
         </div>
     )

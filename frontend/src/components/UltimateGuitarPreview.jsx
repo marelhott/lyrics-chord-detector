@@ -27,10 +27,10 @@ function isValidChordToken(token) {
 function renderChordLine(line, fontSize) {
     // Handle Metadata headers (Title, Key)
     if (line.startsWith('Title:')) {
-        return <span className="font-bold text-monstera-900 text-lg">{line}</span>
+        return <span className="font-bold text-gradient text-xl">{line}</span>
     }
     if (line.startsWith('Key:')) {
-        return <span className="font-semibold text-monstera-700">{line}</span>
+        return <span className="font-semibold text-accent-cyan">{line}</span>
     }
 
     // 1. Strict check: Is this purely a chord line?
@@ -43,14 +43,14 @@ function renderChordLine(line, fontSize) {
     // Check if ALL tokens are valid chords
     // Exception: Section headers like [Chorus] are NOT chords
     if (line.trim().startsWith('[')) {
-        return <span className="font-bold text-monstera-900">{line}</span>
+        return <span className="font-bold text-accent-purple">{line}</span>
     }
 
     const areAllTokensChords = tokens.every(token => isValidChordToken(token))
 
     // If not all tokens are chords, treat as lyric line
     if (!areAllTokensChords) {
-        return <span>{line}</span>
+        return <span className="text-neutral-200">{line}</span>
     }
 
     // This IS a chord line - parse and render chords
@@ -80,11 +80,11 @@ function renderChordLine(line, fontSize) {
         chords.push(
             <span
                 key={`chord-${position}`}
-                className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
-                    ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                    : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
+                className={`inline-block px-2 py-1 mx-0.5 rounded-lg border ${isFundamental
+                    ? 'bg-gradient-to-br from-accent-purple to-accent-cyan text-white font-bold shadow-glow-sm border-accent-purple/30'
+                    : 'glass border-neutral-600 text-neutral-300 font-semibold'
                     }`}
-                style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
+                style={{ fontSize: fontSize === 'text-xs' ? '11px' : fontSize === 'text-sm' ? '12px' : '13px' }}
             >
                 {chord}
             </span>
@@ -120,38 +120,40 @@ export default function UltimateGuitarPreview({ result }) {
         const lines = formatted_output.split('\n')
 
         return (
-            <div className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
+            <div className="glass-strong rounded-2xl overflow-hidden shadow-soft-lg border border-neutral-700/50">
                 {/* Header */}
-                <div className="bg-monstera-50 border-b border-monstera-200 px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                        </svg>
-                        <span className="text-xs font-black text-monstera-800 uppercase tracking-widest">
+                <div className="glass border-b border-neutral-700/50 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-lg flex items-center justify-center shadow-glow-sm">
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                            </svg>
+                        </div>
+                        <span className="text-sm font-bold text-gradient uppercase tracking-wider">
                             Lyrics & Chords
                         </span>
                     </div>
 
                     {/* Font size controls */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-bold text-monstera-600 uppercase tracking-wide">Velikost:</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-neutral-400 uppercase tracking-wide">Size:</span>
                         <select
                             value={fontSize}
                             onChange={(e) => setFontSize(e.target.value)}
-                            className="text-[10px] font-bold px-2 py-1 border border-monstera-200 rounded bg-white text-monstera-800"
+                            className="text-xs font-semibold px-3 py-1.5 glass rounded-lg text-neutral-200 cursor-pointer hover:border-accent-purple/50 transition-colors"
                         >
-                            <option value="text-xs">Malá</option>
-                            <option value="text-sm">Střední</option>
-                            <option value="text-base">Velká</option>
+                            <option value="text-xs">Small</option>
+                            <option value="text-sm">Medium</option>
+                            <option value="text-base">Large</option>
                         </select>
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-x-auto">
-                    <div className={`font-mono ${fontSize} leading-relaxed text-ink`}>
+                <div className="p-8 overflow-x-auto custom-scrollbar">
+                    <div className={`font-mono ${fontSize} leading-loose text-neutral-200`}>
                         {lines.map((line, idx) => (
-                            <div key={idx} className="whitespace-pre min-h-[1.5em]">
+                            <div key={idx} className="whitespace-pre min-h-[1.8em]">
                                 {renderChordLine(line, fontSize)}
                             </div>
                         ))}
@@ -163,37 +165,40 @@ export default function UltimateGuitarPreview({ result }) {
 
     // Fallback: Render structure manually
     return (
-        <div className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
-            <div className="bg-monstera-50 border-b border-monstera-200 px-4 py-3">
-                <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
-                    <span className="text-xs font-black text-monstera-800 uppercase tracking-widest">
+        <div className="glass-strong rounded-2xl overflow-hidden shadow-soft-lg border border-neutral-700/50">
+            <div className="glass border-b border-neutral-700/50 px-6 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-lg flex items-center justify-center shadow-glow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                        </svg>
+                    </div>
+                    <span className="text-sm font-bold text-gradient uppercase tracking-wider">
                         Song Structure
                     </span>
                 </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-8 space-y-8">
                 {structure.map((section, idx) => (
-                    <div key={idx} className="space-y-2">
+                    <div key={idx} className="space-y-3">
                         {/* Section header */}
-                        <h3 className="text-sm font-black text-monstera-800 uppercase tracking-wide">
+                        <h3 className="text-base font-bold text-accent-purple uppercase tracking-wide flex items-center gap-2">
+                            <div className="w-1 h-4 bg-gradient-to-b from-accent-purple to-accent-cyan rounded-full"></div>
                             [{section.type}{section.number ? ` ${section.number}` : ''}]
                         </h3>
 
                         {/* Section content */}
                         {section.segments && section.segments.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-2 pl-4">
                                 {section.segments.map((segment, segIdx) => (
-                                    <p key={segIdx} className="text-sm text-ink leading-relaxed">
+                                    <p key={segIdx} className="text-sm text-neutral-300 leading-relaxed">
                                         {segment.text}
                                     </p>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-xs text-monstera-400 italic">Instrumental</p>
+                            <p className="text-sm text-neutral-500 italic pl-4">Instrumental</p>
                         )}
                     </div>
                 ))}

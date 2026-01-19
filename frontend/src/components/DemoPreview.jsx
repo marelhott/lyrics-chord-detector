@@ -39,15 +39,15 @@ export default function DemoPreview({ result, onUnlock }) {
     const renderLine = useCallback((line, idx) => {
         // Title and Key - show normally
         if (line.startsWith('Title:')) {
-            return <span key={idx} className="font-bold text-monstera-900 text-lg">{line}</span>
+            return <span key={idx} className="font-bold text-gradient text-xl">{line}</span>
         }
         if (line.startsWith('Key:')) {
-            return <span key={idx} className="font-semibold text-monstera-700">{line}</span>
+            return <span key={idx} className="font-semibold text-accent-cyan">{line}</span>
         }
 
         // Section headers - show normally
         if (line.trim().startsWith('[')) {
-            return <span key={idx} className="font-bold text-monstera-900">{line}</span>
+            return <span key={idx} className="font-bold text-accent-purple">{line}</span>
         }
 
         // Chord lines - show first 3 chords clearly GLOBALLY
@@ -76,11 +76,11 @@ export default function DemoPreview({ result, onUnlock }) {
                 parts.push(
                     <span
                         key={`chord-${idx}-${match.index}`}
-                        className={`inline-block px-1.5 py-0.5 mx-0.5 rounded border ${isFundamental
-                            ? 'bg-monstera-100 border-monstera-400 text-monstera-900 font-black'
-                            : 'bg-gray-50 border-gray-300 text-gray-600 font-semibold'
-                            } ${!isVisible ? 'blur-sm opacity-60 select-none' : ''}`}
-                        style={{ fontSize: fontSize === 'text-xs' ? '10px' : fontSize === 'text-sm' ? '11px' : '12px' }}
+                        className={`inline-block px-2 py-1 mx-0.5 rounded-lg border ${isFundamental
+                            ? 'bg-gradient-to-br from-accent-purple to-accent-cyan text-white font-bold shadow-glow-sm border-accent-purple/30'
+                            : 'glass border-neutral-600 text-neutral-300 font-semibold'
+                            } ${!isVisible ? 'blur-sm opacity-40 select-none' : ''}`}
+                        style={{ fontSize: fontSize === 'text-xs' ? '11px' : fontSize === 'text-sm' ? '12px' : '13px' }}
                     >
                         {match[0]}
                     </span>
@@ -109,25 +109,25 @@ export default function DemoPreview({ result, onUnlock }) {
     // Render lyrics - show first verse fully, then block rest
     const renderBlockedLyrics = (text, lineIndex) => {
         if (!text || text.trim().startsWith('[') || text.trim() === '') {
-            return <span key={lineIndex}>{text}</span>
+            return <span key={lineIndex} className="text-neutral-200">{text}</span>
         }
 
         // Show first 6 lines of lyrics completely (roughly first verse)
         if (lineIndex < 15) {
-            return <span key={lineIndex}>{text}</span>
+            return <span key={lineIndex} className="text-neutral-200">{text}</span>
         }
 
         // After first verse, show first 2 words then block
         const words = text.split(' ')
         if (words.length <= 2) {
-            return <span key={lineIndex}>{text}</span>
+            return <span key={lineIndex} className="text-neutral-200">{text}</span>
         }
 
         return (
-            <span key={lineIndex}>
+            <span key={lineIndex} className="text-neutral-200">
                 {words.slice(0, 2).join(' ')}
                 {' '}
-                <span className="inline-block bg-black text-black select-none rounded px-1">
+                <span className="inline-block bg-neutral-900 text-neutral-900 select-none rounded px-1">
                     {words.slice(2).join(' ')}
                 </span>
             </span>
@@ -135,21 +135,23 @@ export default function DemoPreview({ result, onUnlock }) {
     }
 
     return (
-        <div className="bg-white border border-monstera-200 rounded-md overflow-hidden shadow-sm">
+        <div className="glass-strong rounded-2xl overflow-hidden shadow-soft-lg border border-neutral-700/50">
             {/* Header */}
-            <div className="bg-monstera-50 border-b border-monstera-200 px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-monstera-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
-                    <span className="text-xs font-black text-monstera-800 uppercase tracking-widest">
+            <div className="glass border-b border-neutral-700/50 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-lg flex items-center justify-center shadow-glow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                        </svg>
+                    </div>
+                    <span className="text-sm font-bold text-gradient uppercase tracking-wider">
                         Preview (30s)
                     </span>
                 </div>
 
                 {/* Font size controls */}
-                <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold text-monstera-600 uppercase tracking-wide">Velikost:</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs text-neutral-400 uppercase tracking-wide">Size:</span>
                     <select
                         value={fontSize}
                         onChange={(e) => {
@@ -157,20 +159,20 @@ export default function DemoPreview({ result, onUnlock }) {
                             chordIndexRef.current = 0
                             setFontSize(e.target.value)
                         }}
-                        className="text-[10px] font-bold px-2 py-1 border border-monstera-200 rounded bg-white text-monstera-800"
+                        className="text-xs font-semibold px-3 py-1.5 glass rounded-lg text-neutral-200 cursor-pointer hover:border-accent-purple/50 transition-colors"
                     >
-                        <option value="text-xs">Malá</option>
-                        <option value="text-sm">Střední</option>
-                        <option value="text-base">Velká</option>
+                        <option value="text-xs">Small</option>
+                        <option value="text-sm">Medium</option>
+                        <option value="text-base">Large</option>
                     </select>
                 </div>
             </div>
 
             {/* Content with blur/block effects */}
-            <div className="p-6 overflow-x-auto">
-                <div className={`font-mono ${fontSize} leading-relaxed text-ink`}>
+            <div className="p-8 overflow-x-auto custom-scrollbar">
+                <div className={`font-mono ${fontSize} leading-loose text-neutral-200`}>
                     {lines.map((line, idx) => (
-                        <div key={idx} className="whitespace-pre min-h-[1.5em]">
+                        <div key={idx} className="whitespace-pre min-h-[1.8em]">
                             {renderLine(line, idx)}
                         </div>
                     ))}
@@ -178,21 +180,29 @@ export default function DemoPreview({ result, onUnlock }) {
             </div>
 
             {/* Unlock CTA */}
-            <div className="mx-6 mb-6 p-6 border-2 border-monstera-400 rounded-lg bg-gradient-to-br from-monstera-50 to-white">
-                <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="mx-6 mb-6 p-6 glass-strong border border-accent-purple/30 rounded-2xl relative overflow-hidden">
+                {/* Animated glow background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-accent-purple/10 via-accent-cyan/10 to-accent-pink/10 animate-gradient opacity-50"></div>
+
+                <div className="relative flex flex-col md:flex-row items-center gap-6">
                     {/* Lock icon */}
                     <div className="shrink-0">
-                        <svg className="w-12 h-12 text-monstera-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full blur-xl opacity-50"></div>
+                            <div className="relative w-16 h-16 bg-gradient-to-br from-accent-purple to-accent-cyan rounded-2xl flex items-center justify-center shadow-glow-md">
+                                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Text */}
                     <div className="flex-1 text-center md:text-left">
-                        <p className="text-sm font-bold text-monstera-900 mb-1">
+                        <p className="text-sm font-semibold text-neutral-300 mb-2">
                             Unlock full lyrics & chords
                         </p>
-                        <p className="text-3xl font-black text-monstera-900">
+                        <p className="text-4xl font-bold text-gradient">
                             2,99 Kč
                         </p>
                     </div>
@@ -200,16 +210,36 @@ export default function DemoPreview({ result, onUnlock }) {
                     {/* Button */}
                     <button
                         onClick={onUnlock}
-                        className="shrink-0 px-8 py-4 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white font-black text-sm uppercase tracking-wider rounded-lg shadow-lg hover:shadow-xl transition-all"
+                        className="relative shrink-0 group"
                     >
-                        Pay with Stripe
+                        <div className="absolute inset-0 bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative px-8 py-4 bg-gradient-to-r from-accent-purple to-accent-cyan rounded-xl font-bold text-sm uppercase tracking-wider text-white shadow-soft transition-all duration-300 group-hover:scale-105 group-hover:shadow-glow-lg">
+                            Pay with Stripe
+                        </div>
                     </button>
                 </div>
 
                 {/* Benefits */}
-                <div className="mt-4 pt-4 border-t border-monstera-200">
-                    <p className="text-xs text-monstera-600 text-center">
-                        ✓ Instant access • ✓ Secure payment • ✓ Download as PDF
+                <div className="relative mt-6 pt-6 border-t border-neutral-700/50">
+                    <p className="text-xs text-neutral-400 text-center flex items-center justify-center gap-6">
+                        <span className="flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Instant access
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Secure payment
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Download as PDF
+                        </span>
                     </p>
                 </div>
             </div>
