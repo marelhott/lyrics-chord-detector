@@ -11,7 +11,9 @@ cmds = [
     "echo '=== Installing Backend ==='",
     "# Upgrade pip first",
     "python3 -m pip install --upgrade pip",
-    "cd backend && pip install -r requirements.txt"
+    "cd backend && pip install -r requirements.txt",
+    "echo '=== Installing yt-dlp explicitly ==='",
+    "pip install yt-dlp"
 ]
 
 [phases.build]
