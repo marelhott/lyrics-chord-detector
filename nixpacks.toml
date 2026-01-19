@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas"]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg", "gcc", "zlib", "gfortran", "lapack", "openblas", "rustc", "cargo"]
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.11"
