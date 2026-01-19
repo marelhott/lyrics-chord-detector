@@ -542,6 +542,41 @@ else:
     print(f"⚠️ Frontend dist not found at: {frontend_dist_path}")
     print("   Frontend will not be served. API-only mode.")
 
+# Debug endpoint to check frontend files
+@app.get("/api/debug/frontend-files")
+async def debug_frontend_files():
+    """Debug endpoint to show what frontend files exist on Railway"""
+    import glob
+    frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+    
+    result = {
+        "frontend_exists": os.path.exists(frontend_path),
+        "dist_exists": os.path.exists(os.path.join(frontend_path, "dist")),
+        "frontend_files": [],
+        "dist_files": []
+    }
+    
+    if os.path.exists(frontend_path):
+        result["frontend_files"] = os.listdir(frontend_path)
+        
+        dist_path = os.path.join(frontend_path, "dist")
+        if os.path.exists(dist_path):
+            # List all files in dist recursively
+            for root, dirs, files in os.walk(dist_path):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, dist_path)
+                    mtime = os.path.getmtime(full_path)
+                    import datetime
+                    timestamp = datetime.datetime.fromtimestamp(mtime).isoformat()
+                    result["dist_files"].append({
+                        "path": rel_path,
+                        "size": os.path.getsize(full_path),
+                        "modified": timestamp
+                    })
+    
+    return result
+
 print("=" * 60)
 
 
