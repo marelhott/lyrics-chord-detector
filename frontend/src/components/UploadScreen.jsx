@@ -87,8 +87,8 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
             <button
               onClick={() => setActiveTab('spotify')}
               className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'spotify'
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                  : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/50'
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/50'
                 }`}
             >
               <Music className="w-4 h-4" />
@@ -200,6 +200,11 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
 
           <p className="text-muted-foreground text-sm mt-6">
             Processing usually takes under 1 minute
+          </p>
+
+          {/* Version indicator */}
+          <p className="text-muted-foreground text-xs mt-8 opacity-50">
+            v2.1.0 | Jan 19, 2026 18:56 CET
           </p>
         </div>
       </main>
