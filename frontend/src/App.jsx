@@ -60,6 +60,50 @@ export default function App() {
     }
   };
 
+  const handleSpotifySubmit = async (spotifyUrl) => {
+    setFileName('Spotify Track');
+    setCurrentScreen('processing');
+
+    const formData = new FormData();
+    formData.append('spotify_url', spotifyUrl);
+
+    try {
+      const response = await fetch(`${API_URL}/download-spotify`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Download failed');
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON error response:", text);
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}...`);
+        }
+      }
+
+      const backendData = await response.json();
+      console.log('Backend Data:', backendData);
+
+      setFileName(backendData.title || 'Spotify Track');
+      setRawResult(backendData);
+
+      const transformedData = transformSongData(backendData);
+      console.log('Transformed Data:', transformedData);
+
+      setSongData(transformedData);
+      setCurrentScreen('result');
+
+    } catch (err) {
+      console.error('Error downloading from Spotify:', err);
+      alert(`Error: ${err.message}`);
+      setCurrentScreen('upload');
+    }
+  };
+
   const handleNewAnalysis = () => {
     setFileName('');
     setSongData(null);
@@ -70,7 +114,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {currentScreen === 'upload' && (
-        <UploadScreen onFileSelect={handleFileSelect} />
+        <UploadScreen onFileSelect={handleFileSelect} onSpotifySubmit={handleSpotifySubmit} />
       )}
 
       {currentScreen === 'processing' && (
