@@ -17,8 +17,8 @@ export function ProcessingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    // Variable delay: 3s for first 3 steps, fast for others
-    const delay = currentStep < 3 ? 3000 : 700;
+    // Variable delay: 5s for first 3 steps, fast for others
+    const delay = currentStep < 3 ? 5000 : 700;
 
     const timeout = setTimeout(() => {
       setCurrentStep(prev => {
