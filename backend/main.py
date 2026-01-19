@@ -500,7 +500,16 @@ print(f"{'='*60}\n")
 
 if os.path.exists(frontend_dist_path):
     print(f"✅ Frontend found! Serving static files from {frontend_dist_path}")
-
+    
+    # Debug: Show frontend build timestamp
+    index_path = os.path.join(frontend_dist_path, "index.html")
+    if os.path.exists(index_path):
+        import datetime
+        mtime = os.path.getmtime(index_path)
+        build_time = datetime.datetime.fromtimestamp(mtime)
+        print(f"📅 Frontend build timestamp: {build_time}")
+        print(f"⏰ Current server time: {datetime.datetime.now()}")
+    
     # Mount static assets (JS, CSS, images, etc.)
     assets_path = os.path.join(frontend_dist_path, "assets")
     if os.path.exists(assets_path):
