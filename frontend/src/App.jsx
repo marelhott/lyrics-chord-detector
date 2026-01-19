@@ -5,7 +5,9 @@ import { ResultsScreen } from './components/ResultScreen'; // Note: filename is 
 import { ExportModal } from './components/ExportModal';
 import { transformSongData } from './lib/songUtils';
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api' : '/api');
+// Backend URL - set VITE_API_URL in Railway frontend service to backend URL (e.g. https://xyz.railway.app/api)
+// For local dev, defaults to localhost:8000/api
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('upload');
