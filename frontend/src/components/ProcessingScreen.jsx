@@ -17,18 +17,20 @@ export function ProcessingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    // We increment step every 700ms to mock progress visual
-    const interval = setInterval(() => {
+    // Variable delay: 3s for first 3 steps, fast for others
+    const delay = currentStep < 3 ? 3000 : 700;
+
+    const timeout = setTimeout(() => {
       setCurrentStep(prev => {
         if (prev < steps.length - 1) {
           return prev + 1;
         }
         return prev;
       });
-    }, 700);
+    }, delay);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearTimeout(timeout);
+  }, [currentStep]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
