@@ -417,7 +417,25 @@ app.include_router(api_router)
 
 # Serve frontend static files (for Railway deployment)
 frontend_dist_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-print(f"\nChecking for frontend at: {frontend_dist_path}")
+print(f"\n{'='*20} DEBUG: FILESYSTEM CHECK {'='*20}")
+print(f"Current Working Directory: {os.getcwd()}")
+print(f"Backend Main File Path: {__file__}")
+print(f"Expected Frontend Dist Path: {frontend_dist_path}")
+
+try:
+    parent_dir = os.path.join(os.path.dirname(__file__), "..")
+    print(f"Listing contents of parent dir ({parent_dir}):")
+    print(os.listdir(parent_dir))
+    
+    frontend_dir = os.path.join(parent_dir, "frontend")
+    if os.path.exists(frontend_dir):
+        print(f"Listing contents of frontend dir ({frontend_dir}):")
+        print(os.listdir(frontend_dir))
+    else:
+        print("❌ Frontend dir does not exist!")
+except Exception as e:
+    print(f"Error checking filesystem: {e}")
+print(f"{'='*60}\n")
 
 if os.path.exists(frontend_dist_path):
     print(f"✅ Frontend found! Serving static files from {frontend_dist_path}")
