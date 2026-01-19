@@ -84,7 +84,7 @@ export function ProcessingScreen({ trackInfo }) {
         </div>
 
         {/* Status Text */}
-        {trackInfo ? (
+        {trackInfo && trackInfo.artistName !== 'Unknown Artist' && trackInfo.trackName !== 'Unknown Track' ? (
           <>
             <h2 className="text-xl font-medium text-muted-foreground mb-4">Generating:</h2>
             <p className="text-2xl font-bold text-foreground mb-2">{trackInfo.artistName}</p>
