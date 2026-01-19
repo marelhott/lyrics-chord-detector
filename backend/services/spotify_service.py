@@ -5,7 +5,6 @@ Downloads audio from Spotify URLs (via YouTube).
 import os
 import tempfile
 from typing import Optional
-from spotdl import Spotdl
 
 
 class SpotifyDownloadService:
@@ -13,13 +12,19 @@ class SpotifyDownloadService:
     
     def __init__(self):
         """Initialize Spotdl client."""
-        self.spotdl = Spotdl(
-            client_id=os.getenv("SPOTIFY_CLIENT_ID"),
-            client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-            user_auth=False,
-            headless=True
-        )
-        print("✅ Spotify download service initialized")
+        try:
+            from spotdl import Spotdl
+            self.spotdl = Spotdl(
+                client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+                client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
+                user_auth=False,
+                headless=True
+            )
+            print("✅ Spotify download service initialized")
+        except ImportError:
+            print("⚠️ spotdl not installed. Spotify download feature will be unavailable.")
+            print("   Install with: pip install spotdl")
+            self.spotdl = None
     
     def download_from_url(self, spotify_url: str, output_dir: Optional[str] = None) -> str:
         """
@@ -35,6 +40,13 @@ class SpotifyDownloadService:
         Raises:
             ValueError: If URL is invalid or download fails
         """
+        if self.spotdl is None:
+            raise ValueError(
+                "Spotify download feature is not available. "
+                "The spotdl library is not installed. "
+                "Please install it with: pip install spotdl"
+            )
+        
         if not output_dir:
             output_dir = tempfile.gettempdir()
         
