@@ -12,3 +12,4 @@ stable-ts
 python-dotenv
 pydub
 numba
+httpx<0.28.0
