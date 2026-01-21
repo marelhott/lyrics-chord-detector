@@ -19,7 +19,25 @@ export default function App() {
   const [trackInfo, setTrackInfo] = useState(null); // { trackName, artistName }
 
   const handleFileSelect = async (selectedFile) => {
-    setFileName(selectedFile.name.replace(/\.(mp3|wav)$/i, ''));
+    const cleanFileName = selectedFile.name.replace(/\.(mp3|wav)$/i, '');
+    setFileName(cleanFileName);
+
+    // Try to extract artist and track from filename
+    // Common formats: "Artist - Track", "Artist-Track", "Track"
+    let trackName = cleanFileName;
+    let artistName = '';
+
+    if (cleanFileName.includes(' - ')) {
+      const parts = cleanFileName.split(' - ');
+      artistName = parts[0].trim();
+      trackName = parts[1]?.trim() || cleanFileName;
+    } else if (cleanFileName.includes('-')) {
+      const parts = cleanFileName.split('-');
+      artistName = parts[0].trim();
+      trackName = parts[1]?.trim() || cleanFileName;
+    }
+
+    setTrackInfo({ trackName, artistName });
     setCurrentScreen('processing');
 
     const formData = new FormData();
