@@ -108,7 +108,17 @@ function renderChordLine(line, fontSize) {
 export default function UltimateGuitarPreview({ result, fontSize: parentFontSize }) {
     // Use parent fontSize if provided, otherwise use internal state
     const [internalFontSize, setInternalFontSize] = useState('text-sm')
-    const fontSize = parentFontSize || internalFontSize
+
+    // Convert pixel fontSize to tailwind class or use internal state
+    let fontSize = internalFontSize
+    if (parentFontSize) {
+        const pxValue = parseInt(parentFontSize)
+        if (pxValue <= 12) fontSize = 'text-xs'
+        else if (pxValue <= 14) fontSize = 'text-sm'
+        else if (pxValue <= 18) fontSize = 'text-base'
+        else if (pxValue <= 20) fontSize = 'text-lg'
+        else fontSize = 'text-xl'
+    }
 
     if (!result || !result.structure) {
         return null
@@ -156,11 +166,20 @@ export default function UltimateGuitarPreview({ result, fontSize: parentFontSize
                 {/* Content */}
                 <div className="p-8 overflow-x-auto custom-scrollbar">
                     <div className={`font-mono ${fontSize} leading-loose text-foreground`}>
-                        {lines.map((line, idx) => (
-                            <div key={idx} className="whitespace-pre min-h-[1.8em]">
-                                {renderChordLine(line, fontSize)}
-                            </div>
-                        ))}
+                        {lines.map((line, idx) => {
+                            // Check if this line is a section header like [Verse 1], [Chorus], etc.
+                            const isSectionHeader = line.trim().match(/^\[([^\]]+)\]$/)
+
+                            return (
+                                <div
+                                    key={idx}
+                                    id={isSectionHeader ? `section-${idx}` : undefined}
+                                    className={`whitespace-pre min-h-[1.8em] ${isSectionHeader ? 'scroll-mt-8' : ''}`}
+                                >
+                                    {renderChordLine(line, fontSize)}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             </div>

@@ -99,8 +99,21 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
 
   // Handle section clicking - scroll to section and highlight
   const handleSectionClick = (sectionName, sectionIndex) => {
-    // Scroll to the section
-    const sectionElement = document.getElementById(`section-${sectionIndex}`);
+    // Try to find section by index first (structured mode)
+    let sectionElement = document.getElementById(`section-${sectionIndex}`);
+
+    // If not found, search for section by name in formatted mode
+    if (!sectionElement) {
+      // Look for elements containing [SectionName] pattern
+      const allDivs = document.querySelectorAll('div');
+      for (const div of allDivs) {
+        if (div.textContent.trim() === `[${sectionName}]`) {
+          sectionElement = div;
+          break;
+        }
+      }
+    }
+
     if (sectionElement) {
       sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
