@@ -275,7 +275,7 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
             </div>
 
             {viewMode === 'ug' && rawResult?.formatted_output ? (
-              <UltimateGuitarPreview result={rawResult} />
+              <UltimateGuitarPreview result={rawResult} fontSize={`${fontSize}px`} />
             ) : (
               <div className="space-y-12">
                 {lyricsData.map((section, sectionIndex) => (

@@ -15,12 +15,12 @@ function isValidChordToken(token) {
     // Ignore empty tokens or purely whitespace/symbols that might separate chords
     if (!token || !token.trim()) return true
 
-    // Strict regex for valid chord
+    // More permissive regex for valid chord - allows more complex chord notations
     // Must start with A-G
     // Optional # or b
-    // Optional suffix (m, maj, min, dim, sus, aug, add, 5, 6, 7, 9, 11, 13)
+    // Optional any combination of letters/numbers for suffixes
     // Optional bass note (/C, etc.)
-    return /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add|5|6|7|9|11|13)*(\/[A-G](#|b)?)?$/.test(token)
+    return /^[A-G](#|b)?[a-z0-9]*(\/[A-G](#|b)?)?$/i.test(token)
 }
 
 // Helper function to render chord lines with styled chord boxes
@@ -105,8 +105,10 @@ function renderChordLine(line, fontSize) {
     return <>{chords}</>
 }
 
-export default function UltimateGuitarPreview({ result }) {
-    const [fontSize, setFontSize] = useState('text-sm')
+export default function UltimateGuitarPreview({ result, fontSize: parentFontSize }) {
+    // Use parent fontSize if provided, otherwise use internal state
+    const [internalFontSize, setInternalFontSize] = useState('text-sm')
+    const fontSize = parentFontSize || internalFontSize
 
     if (!result || !result.structure) {
         return null
@@ -137,15 +139,17 @@ export default function UltimateGuitarPreview({ result }) {
                     {/* Font size controls */}
                     <div className="flex items-center gap-3">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Size:</span>
-                        <select
-                            value={fontSize}
-                            onChange={(e) => setFontSize(e.target.value)}
-                            className="text-xs font-semibold px-3 py-1.5 bg-background border border-border rounded-lg text-foreground cursor-pointer hover:border-primary/50 transition-colors"
-                        >
-                            <option value="text-xs">Small</option>
-                            <option value="text-sm">Medium</option>
-                            <option value="text-base">Large</option>
-                        </select>
+                        {!parentFontSize && (
+                            <select
+                                value={internalFontSize}
+                                onChange={(e) => setInternalFontSize(e.target.value)}
+                                className="text-xs font-semibold px-3 py-1.5 bg-background border border-border rounded-lg text-foreground cursor-pointer hover:border-primary/50 transition-colors"
+                            >
+                                <option value="text-xs">Small</option>
+                                <option value="text-sm">Medium</option>
+                                <option value="text-base">Large</option>
+                            </select>
+                        )}
                     </div>
                 </div>
 
@@ -183,7 +187,10 @@ export default function UltimateGuitarPreview({ result }) {
                 {structure.map((section, idx) => (
                     <div key={idx} className="space-y-3">
                         {/* Section header */}
-                        <h3 className="text-base font-bold text-primary uppercase tracking-wide flex items-center gap-2">
+                        <h3
+                            id={`section-${idx}`}
+                            className="text-base font-bold text-primary uppercase tracking-wide flex items-center gap-2 scroll-mt-8"
+                        >
                             <div className="w-1 h-4 bg-primary rounded-full"></div>
                             [{section.type}{section.number ? ` ${section.number}` : ''}]
                         </h3>

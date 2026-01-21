@@ -104,8 +104,9 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
                 className={`relative mb-10 bg-card border-2 ${isDragging ? 'border-primary shadow-lg shadow-primary/20' : 'border-border'
-                  } rounded-2xl p-20 transition-all hover:border-primary/50 group overflow-hidden`}
+                  } rounded-2xl p-20 transition-all hover:border-primary/50 group overflow-hidden cursor-pointer`}
               >
                 {/* Animated gradient background effect */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
