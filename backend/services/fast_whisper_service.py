@@ -58,16 +58,56 @@ class FastWhisperService:
         print(f"Transcribing with OpenAI API: {audio_path}")
         print(f"Language: {language or 'auto-detect'}")
         
-        # Open audio file
-        with open(audio_path, "rb") as audio_file:
-            # Transcribe with word-level timestamps
-            transcript = self.client.audio.transcriptions.create(
-                model=self.model,
-                file=audio_file,
-                language=language,
-                response_format="verbose_json",
-                timestamp_granularities=["word", "segment"]  # Request both!
-            )
+        # Check file size and compress if needed (OpenAI limit is 25MB)
+        import os
+        file_size = os.path.getsize(audio_path)
+        max_size = 25 * 1024 * 1024  # 25 MB in bytes
+        
+        compressed_path = None
+        if file_size > max_size:
+            print(f"⚠️  File size ({file_size / 1024 / 1024:.1f} MB) exceeds 25 MB limit")
+            print(f"   Compressing audio...")
+            
+            try:
+                from pydub import AudioSegment
+                import tempfile
+                
+                # Load audio
+                audio = AudioSegment.from_file(audio_path)
+                
+                # Compress: convert to mono, reduce bitrate
+                audio = audio.set_channels(1)  # Mono
+                audio = audio.set_frame_rate(16000)  # 16kHz (Whisper's native rate)
+                
+                # Export as MP3 with lower bitrate
+                compressed_path = tempfile.mktemp(suffix=".mp3")
+                audio.export(compressed_path, format="mp3", bitrate="64k")
+                
+                compressed_size = os.path.getsize(compressed_path)
+                print(f"   ✅ Compressed to {compressed_size / 1024 / 1024:.1f} MB")
+                
+                # Use compressed file
+                audio_path = compressed_path
+            except ImportError:
+                print("   ⚠️  pydub not installed, trying original file anyway...")
+            except Exception as e:
+                print(f"   ⚠️  Compression failed: {e}, trying original file...")
+        
+        try:
+            # Open audio file
+            with open(audio_path, "rb") as audio_file:
+                # Transcribe with word-level timestamps
+                transcript = self.client.audio.transcriptions.create(
+                    model=self.model,
+                    file=audio_file,
+                    language=language,
+                    response_format="verbose_json",
+                    timestamp_granularities=["word", "segment"]  # Request both!
+                )
+        finally:
+            # Clean up compressed file if created
+            if compressed_path and os.path.exists(compressed_path):
+                os.remove(compressed_path)
         
         # Extract data
         text = transcript.text
