@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Music2, Upload, Music } from 'lucide-react';
 
-export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
+export function UploadScreen({ onFileSelect, onSpotifySubmit, chordQuality, onQualityChange }) {
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState('file'); // 'file' or 'spotify'
   const [spotifyUrl, setSpotifyUrl] = useState('');
@@ -95,6 +95,52 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
               Spotify URL
             </button>
 
+          </div>
+
+          {/* Quality Selector */}
+          <div className="mb-6 p-4 bg-card/50 rounded-lg border border-border/50">
+            <div className="text-sm font-medium text-foreground/80 mb-3 text-center">
+              Chord Detection Quality
+            </div>
+            <div className="flex gap-2 justify-center flex-wrap">
+              <button
+                onClick={() => onQualityChange('free')}
+                className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${chordQuality === 'free'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-blue-500/50'
+                  }`}
+              >
+                <div className="font-semibold">Free</div>
+                <div className="text-[10px] opacity-75">Librosa • 65-70%</div>
+              </button>
+
+              <button
+                onClick={() => onQualityChange('demo')}
+                className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${chordQuality === 'demo'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-green-500/50'
+                  }`}
+              >
+                <div className="font-semibold">Demo</div>
+                <div className="text-[10px] opacity-75">ChordMini • 75-80%</div>
+              </button>
+
+              <button
+                onClick={() => onQualityChange('premium')}
+                className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${chordQuality === 'premium'
+                    ? 'bg-purple-500 text-white shadow-lg'
+                    : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-purple-500/50'
+                  }`}
+              >
+                <div className="font-semibold">Premium</div>
+                <div className="text-[10px] opacity-75">BACHI • 80-85%</div>
+              </button>
+            </div>
+            <div className="mt-2 text-center text-[11px] text-muted-foreground">
+              {chordQuality === 'free' && '⚡ Fast, offline, basic accuracy'}
+              {chordQuality === 'demo' && '🎵 ChordMini API, good accuracy (default)'}
+              {chordQuality === 'premium' && '🔥 State-of-the-art, local, FREE!'}
+            </div>
           </div>
 
           {/* Upload Card - File Upload */}

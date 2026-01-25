@@ -17,6 +17,7 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
   const [trackInfo, setTrackInfo] = useState(null); // { trackName, artistName }
+  const [chordQuality, setChordQuality] = useState('demo'); // 'free', 'demo', 'premium'
 
   const handleFileSelect = async (selectedFile) => {
     const cleanFileName = selectedFile.name.replace(/\.(mp3|wav)$/i, '');
@@ -42,8 +43,7 @@ export default function App() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
-    // Optional: Add quality parameter if we want to expose it later
-    // formData.append('quality', 'premium'); 
+    formData.append('quality', chordQuality); // Use selected quality tier 
 
     try {
       const response = await fetch(`${API_URL}/process-audio`, {
@@ -161,7 +161,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {currentScreen === 'upload' && (
-        <UploadScreen onFileSelect={handleFileSelect} onSpotifySubmit={handleSpotifySubmit} />
+        <UploadScreen
+          onFileSelect={handleFileSelect}
+          onSpotifySubmit={handleSpotifySubmit}
+          chordQuality={chordQuality}
+          onQualityChange={setChordQuality}
+        />
       )}
 
       {currentScreen === 'processing' && (
