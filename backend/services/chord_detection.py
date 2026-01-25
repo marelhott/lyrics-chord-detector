@@ -9,8 +9,10 @@ import warnings
 warnings.filterwarnings('ignore')
 
 try:
-    from madmom.features.chords import DeepChromaChordRecognitionProcessor
-    MADMOM_AVAILABLE = True
+    # Madmom has NumPy compatibility issues with NumPy 1.26+
+    # from madmom.features.chords import DeepChromaChordRecognitionProcessor
+    MADMOM_AVAILABLE = False
+    print("Note: Madmom disabled due to NumPy compatibility issues")
 except ImportError:
     MADMOM_AVAILABLE = False
     print("Warning: madmom not installed. Using fallback chord detection.")
