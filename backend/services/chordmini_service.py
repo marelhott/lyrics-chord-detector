@@ -13,7 +13,7 @@ class ChordMiniService:
     
     def __init__(self):
         """Initialize ChordMini service."""
-        self.api_url = "https://api.chordmini.me"
+        self.api_url = "https://chordmini-backend-191567167632.us-central1.run.app"
         self.timeout = 60.0  # 60 seconds timeout
         print("✅ ChordMini API service initialized")
     
