@@ -16,7 +16,7 @@ load_dotenv()
 from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenAI API
 from services.chord_detection import get_chord_service
 from services.chordmini_service import get_chordmini_service  # ChordMini API (free, 75-80%)
-from services.moises_service import get_moises_service  # Moises.ai API (premium, 85-90%)
+from services.bachi_service import get_bachi_service  # BACHI HuggingFace (premium, 80-85%)
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
 from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
@@ -50,7 +50,7 @@ print("=" * 60)
 whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
 chord_service = get_chord_service(use_madmom=False)  # Librosa fallback (65-70%)
 chordmini_service = get_chordmini_service()  # ChordMini API (free, 75-80%)
-moises_service = get_moises_service()  # Moises.ai API (premium, 85-90%)
+bachi_service = get_bachi_service()  # BACHI HuggingFace (premium, 80-85%)
 structure_service = get_structure_service()
 alignment_service = get_alignment_service()
 
@@ -234,7 +234,7 @@ async def process_audio(
         quality: Chord detection quality:
             - "free": Librosa (65-70% accuracy, offline)
             - "demo": ChordMini API (75-80% accuracy, free)
-            - "premium": Moises.ai API (85-90% accuracy, $0.04/min)
+            - "premium": BACHI HuggingFace (80-85% accuracy, local, free)
     
     Returns:
         JSON with:
@@ -288,11 +288,11 @@ async def process_audio(
         print(f"Step 2/5: Detecting chords (quality: {quality})...")
         
         if quality == "premium":
-            # Premium: Moises.ai API (85-90% accuracy)
+            # Premium: BACHI HuggingFace (80-85% accuracy, local)
             try:
-                chords = await moises_service.detect_chords(temp_path)
+                chords = bachi_service.detect_chords(temp_path)
             except Exception as e:
-                print(f"   Moises.ai failed: {e}, falling back to ChordMini...")
+                print(f"   BACHI failed: {e}, falling back to ChordMini...")
                 chords = await chordmini_service.detect_chords(temp_path)
         elif quality == "demo":
             # Demo/Default: ChordMini API (75-80% accuracy)
