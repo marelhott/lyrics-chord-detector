@@ -15,6 +15,7 @@ load_dotenv()
 # Import our new services
 from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenAI API
 from services.chord_detection import get_chord_service
+from services.chordmini_service import get_chordmini_service  # ChordMini API (free, 75-80%)
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
 from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
@@ -46,7 +47,8 @@ print("=" * 60)
 
 # Load services - using OpenAI API for speed
 whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
-chord_service = get_chord_service(use_madmom=False)  # Librosa fallback for Railway
+chord_service = get_chord_service(use_madmom=False)  # Librosa fallback (65-70%)
+chordmini_service = get_chordmini_service()  # ChordMini API (free, 75-80%)
 structure_service = get_structure_service()
 alignment_service = get_alignment_service()
 
@@ -275,9 +277,14 @@ async def process_audio(
             language=language
         )
         
-        # Step 2: Detect chords
-        print("Step 2/5: Detecting chords...")
-        chords = chord_service.detect_chords(temp_path)
+        # Step 2: Detect chords with ChordMini API (better accuracy)
+        print("Step 2/5: Detecting chords with ChordMini API...")
+        chords = await chordmini_service.detect_chords(temp_path)
+        
+        # Fallback to librosa if ChordMini fails
+        if not chords or len(chords) == 0:
+            print("   ChordMini failed, using librosa fallback...")
+            chords = chord_service.detect_chords(temp_path)
         
         # Detect key
         key = chord_service.detect_key(temp_path)
