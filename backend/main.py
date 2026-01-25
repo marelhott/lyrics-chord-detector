@@ -16,6 +16,7 @@ load_dotenv()
 from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenAI API
 from services.chord_detection import get_chord_service
 from services.chordmini_service import get_chordmini_service  # ChordMini API (free, 75-80%)
+from services.moises_service import get_moises_service  # Moises.ai API (premium, 85-90%)
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
 from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
@@ -49,6 +50,7 @@ print("=" * 60)
 whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
 chord_service = get_chord_service(use_madmom=False)  # Librosa fallback (65-70%)
 chordmini_service = get_chordmini_service()  # ChordMini API (free, 75-80%)
+moises_service = get_moises_service()  # Moises.ai API (premium, 85-90%)
 structure_service = get_structure_service()
 alignment_service = get_alignment_service()
 
@@ -220,7 +222,8 @@ async def process_demo(
 @api_router.post("/process-audio")
 async def process_audio(
     file: UploadFile = File(...),
-    language: Optional[str] = Form(None)
+    language: Optional[str] = Form(None),
+    quality: str = Form("demo")  # "free", "demo", "premium"
 ):
     """
     Process audio file - transcribe lyrics and detect chords.
@@ -228,6 +231,10 @@ async def process_audio(
     Args:
         file: Audio file (MP3/WAV)
         language: Language code ("en", "cs", "sk", etc.) or None for auto-detect
+        quality: Chord detection quality:
+            - "free": Librosa (65-70% accuracy, offline)
+            - "demo": ChordMini API (75-80% accuracy, free)
+            - "premium": Moises.ai API (85-90% accuracy, $0.04/min)
     
     Returns:
         JSON with:
@@ -277,13 +284,26 @@ async def process_audio(
             language=language
         )
         
-        # Step 2: Detect chords with ChordMini API (better accuracy)
-        print("Step 2/5: Detecting chords with ChordMini API...")
-        chords = await chordmini_service.detect_chords(temp_path)
+        # Step 2: Detect chords based on quality tier
+        print(f"Step 2/5: Detecting chords (quality: {quality})...")
         
-        # Fallback to librosa if ChordMini fails
+        if quality == "premium":
+            # Premium: Moises.ai API (85-90% accuracy)
+            try:
+                chords = await moises_service.detect_chords(temp_path)
+            except Exception as e:
+                print(f"   Moises.ai failed: {e}, falling back to ChordMini...")
+                chords = await chordmini_service.detect_chords(temp_path)
+        elif quality == "demo":
+            # Demo/Default: ChordMini API (75-80% accuracy)
+            chords = await chordmini_service.detect_chords(temp_path)
+        else:
+            # Free: Librosa (65-70% accuracy)
+            chords = chord_service.detect_chords(temp_path)
+        
+        # Fallback to librosa if everything fails
         if not chords or len(chords) == 0:
-            print("   ChordMini failed, using librosa fallback...")
+            print("   All APIs failed, using librosa fallback...")
             chords = chord_service.detect_chords(temp_path)
         
         # Detect key
