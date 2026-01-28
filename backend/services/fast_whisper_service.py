@@ -105,10 +105,12 @@ class FastWhisperService:
             print(f"DEBUG: Available attributes: {dir(transcript)}")
         
         # Assign words to segments
+        # Use word START time to determine segment membership (not end time)
+        # This prevents losing words that span segment boundaries
         for segment in segments:
             segment_words = [
                 w for w in all_words
-                if w["start"] >= segment["start"] and w["end"] <= segment["end"]
+                if w["start"] >= segment["start"] and w["start"] < segment["end"]
             ]
             segment["words"] = segment_words
         

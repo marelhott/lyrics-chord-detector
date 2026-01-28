@@ -159,6 +159,7 @@ class StructureDetectionService:
         if first_vocal_time > 3:  # More than 3 seconds of instrumental
             structure.append({
                 "type": "intro",
+                "label": "[Intro]",
                 "start": 0,
                 "end": round(first_vocal_time, 2),
                 "segments": []
@@ -190,6 +191,7 @@ class StructureDetectionService:
                     current_section = {
                         "type": "verse",
                         "number": verse_count,
+                        "label": f"[Verse {verse_count}]",
                         "start": segment["start"],
                         "end": segment["end"],
                         "segments": [segment]
@@ -198,6 +200,8 @@ class StructureDetectionService:
                     chorus_count += 1
                     current_section = {
                         "type": "chorus",
+                        "number": chorus_count,
+                        "label": "[Chorus]" if chorus_count == 1 else f"[Chorus {chorus_count}]",
                         "start": segment["start"],
                         "end": segment["end"],
                         "segments": [segment]
@@ -219,6 +223,7 @@ class StructureDetectionService:
                 if total_duration - last_vocal_time > 3:
                     structure.append({
                         "type": "outro",
+                        "label": "[Outro]",
                         "start": round(last_vocal_time, 2),
                         "end": round(total_duration, 2),
                         "segments": []

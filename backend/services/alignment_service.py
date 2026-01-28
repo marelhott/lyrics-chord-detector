@@ -110,8 +110,9 @@ class AlignmentService:
             chord_name = chord["chord"]
             chord_time = chord["time"]
             
-            # Skip if same chord detected within 2 seconds
-            if last_chord == chord_name and (chord_time - last_time) < 2.0:
+            # Skip if same chord detected within 0.5 seconds (likely duplicate detection)
+            # Reduced from 2.0s to preserve legitimate quick chord changes
+            if last_chord == chord_name and (chord_time - last_time) < 0.5:
                 continue
             
             # Skip very complex/unusual chords (likely detection errors)
@@ -239,11 +240,10 @@ class AlignmentService:
             
             # Process each segment as a line
             for seg_idx, segment in enumerate(section_segments):
-                # Get chords for this segment
+                # Get chords for this segment (by time range)
                 segment_chords = [
                     c for c in aligned_chords
-                    if c.get("segment_index") == segment.get("_index", -1) or
-                    (segment["start"] <= c["time"] <= segment["end"])
+                    if segment["start"] <= c["time"] <= segment["end"]
                 ]
                 
                 # Get words from segment
@@ -357,34 +357,45 @@ class AlignmentService:
         
         # Create chord line (same length as text)
         chord_line = [" "] * len(text)
-        
+
+        # Track used word positions to avoid assigning multiple chords to same word occurrence
+        used_positions = set()
+
         # Place each chord at the position of its aligned word
         for chord in chords:
             chord_word = chord.get("word")
             chord_name = chord.get("chord", "")
-            
+
             if not chord_word or not chord_name:
                 continue
-            
+
             # Format the chord (bold if fundamental)
             chord_str = self._format_chord(chord_name)
-            
+
             # Find the word position that matches this chord
             matching_pos = None
             for word_pos in word_positions:
+                pos = word_pos["position"]
+                if pos in used_positions:
+                    continue  # Skip already used positions
                 if word_pos["word"].lower().strip() == chord_word.lower().strip():
                     # Check if this is the right occurrence based on timestamp
                     if abs(word_pos.get("start", 0) - chord.get("time", 0)) < 1.0:
-                        matching_pos = word_pos["position"]
+                        matching_pos = pos
+                        used_positions.add(pos)
                         break
-            
+
             if matching_pos is None:
-                # Fallback: find any occurrence of the word
+                # Fallback: find any unused occurrence of the word
                 for word_pos in word_positions:
+                    pos = word_pos["position"]
+                    if pos in used_positions:
+                        continue
                     if word_pos["word"].lower().strip() == chord_word.lower().strip():
-                        matching_pos = word_pos["position"]
+                        matching_pos = pos
+                        used_positions.add(pos)
                         break
-            
+
             if matching_pos is not None:
                 # Place chord at this position
                 # Make sure we don't overflow or overwrite other chords

@@ -63,14 +63,41 @@ export function transformSongData(backendData) {
         
         // If we have words
         if (segment.words && segment.words.length > 0) {
+          // Track which chords have been used to avoid duplicates
+          const usedChordIndices = new Set();
+
           segment.words.forEach(w => {
             lineWords.push(w.word);
-            
-            // Find chord starting around this word
-            const chord = chordsInSeg.find(c => 
-              c.time >= w.start && c.time < w.end
-            );
-            lineChords.push(chord ? chord.chord : "");
+
+            // Find chord that:
+            // 1. Starts within the word's time range, OR
+            // 2. Starts slightly before the word (within 0.3s tolerance)
+            // This handles cases where chord detection is slightly early
+            let bestChord = null;
+            let bestDistance = Infinity;
+
+            chordsInSeg.forEach((c, idx) => {
+              if (usedChordIndices.has(idx)) return;
+
+              // Check if chord falls within word time range (with tolerance)
+              const tolerance = 0.3; // 300ms tolerance
+              const isWithinWord = c.time >= (w.start - tolerance) && c.time < w.end;
+
+              if (isWithinWord) {
+                const distance = Math.abs(c.time - w.start);
+                if (distance < bestDistance) {
+                  bestDistance = distance;
+                  bestChord = { chord: c, idx };
+                }
+              }
+            });
+
+            if (bestChord) {
+              usedChordIndices.add(bestChord.idx);
+              lineChords.push(bestChord.chord.chord);
+            } else {
+              lineChords.push("");
+            }
           });
         } else {
           const words = segment.text.trim().split(/\s+/).filter(Boolean);
