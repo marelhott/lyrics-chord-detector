@@ -1,7 +1,9 @@
 """
 Hybrid chord detection service.
+- Primary: Replicate BTC model (90%+ accuracy, transformer-based)
 - Free tier: Essentia (70-80% accuracy, lightweight)
 - Premium tier: Modal.com with Madmom+Demucs (89%+ accuracy)
+- Fallback: Librosa (60-70% accuracy)
 """
 import numpy as np
 import librosa
@@ -12,6 +14,13 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Import available services
+try:
+    from services.replicate_chord_service import get_replicate_service
+    REPLICATE_AVAILABLE = True
+except ImportError:
+    REPLICATE_AVAILABLE = False
+    print("Warning: Replicate service not available.")
+
 try:
     from services.essentia_chord_service import get_essentia_service
     ESSENTIA_AVAILABLE = True
@@ -29,24 +38,32 @@ except ImportError:
 
 class ChordDetectionService:
     """Service for detecting chords from audio files."""
-    
+
     def __init__(self, use_madmom: bool = False):
         """
         Initialize chord detection service.
-        
+
         Args:
             use_madmom: Use Madmom if available (for local dev), otherwise use Essentia
         """
         self.modal_endpoint = os.getenv("MODAL_CHORD_ENDPOINT")
-        
-        # Try Essentia first (best for Railway)
+
+        # Try Replicate first (best quality - BTC transformer model)
+        if REPLICATE_AVAILABLE:
+            self.replicate_service = get_replicate_service()
+            self.use_replicate = self.replicate_service is not None
+        else:
+            self.use_replicate = False
+            self.replicate_service = None
+
+        # Try Essentia second (best for Railway free tier)
         if ESSENTIA_AVAILABLE:
             self.essentia_service = get_essentia_service()
             self.use_essentia = self.essentia_service is not None
         else:
             self.use_essentia = False
             self.essentia_service = None
-        
+
         # Madmom fallback (for local dev)
         self.use_madmom = use_madmom and MADMOM_AVAILABLE
         if self.use_madmom:
@@ -55,9 +72,11 @@ class ChordDetectionService:
             print("Madmom chord detection ready")
         else:
             self.processor = None
-        
+
         # Log active method
-        if self.use_essentia:
+        if self.use_replicate:
+            print("✅ Using Replicate BTC chord detection (90%+ accuracy)")
+        elif self.use_essentia:
             print("✅ Using Essentia chord detection (70-80% accuracy)")
         elif self.use_madmom:
             print("✅ Using Madmom chord detection (89%+ accuracy)")
@@ -67,13 +86,13 @@ class ChordDetectionService:
     async def detect_chords(self, audio_path: str, quality: str = "free") -> List[Dict]:
         """
         Detect chords from audio file with quality tier support.
-        
+
         Args:
             audio_path: Path to audio file
             quality: Detection quality tier:
-                - 'free': Essentia (70-80% accuracy) or Librosa fallback
+                - 'free': Replicate BTC (if available) > Essentia > Librosa
                 - 'premium': Modal.com with Madmom+Demucs (89%+ accuracy)
-        
+
         Returns:
             List of chord detections:
             [
@@ -85,14 +104,27 @@ class ChordDetectionService:
         # Premium tier: Call Modal.com
         if quality == "premium" and self.modal_endpoint:
             return await self._detect_premium_modal(audio_path)
-        
-        # Free tier: Essentia or fallback
+
+        # Try Replicate BTC first (best quality)
+        if self.use_replicate:
+            try:
+                chords = await self.replicate_service.detect_chords(audio_path)
+                if chords:
+                    return chords
+                print("⚠️ Replicate returned no chords, falling back...")
+            except Exception as e:
+                print(f"⚠️ Replicate failed: {e}, falling back...")
+
+        # Fallback: Essentia
         if self.use_essentia:
             return self.essentia_service.detect_chords(audio_path)
-        elif self.use_madmom:
+
+        # Fallback: Madmom
+        if self.use_madmom:
             return self._detect_with_madmom(audio_path)
-        else:
-            return self._detect_with_librosa(audio_path)
+
+        # Final fallback: Librosa
+        return self._detect_with_librosa(audio_path)
     
     async def _detect_premium_modal(self, audio_path: str) -> List[Dict]:
         """Call Modal.com endpoint for premium chord detection."""
