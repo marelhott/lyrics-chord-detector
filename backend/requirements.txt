@@ -13,3 +13,4 @@ python-dotenv==1.0.0
 pydub==0.25.1
 numba==0.58.1
 yt-dlp
+httpx>=0.25.0
