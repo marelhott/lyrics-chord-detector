@@ -21,15 +21,35 @@ export function UploadScreen({ onFileSelect, onSpotifySubmit }) {
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
-    if (file && (file.type === 'audio/mp3' || file.type === 'audio/wav' || file.type === 'audio/mpeg')) {
-      onFileSelect(file);
+    if (file) {
+      // Check MIME type or file extension for audio files
+      const validMimeTypes = ['audio/mp3', 'audio/wav', 'audio/mpeg', 'audio/x-wav', 'audio/wave'];
+      const validExtensions = ['.mp3', '.wav'];
+      const hasValidType = validMimeTypes.includes(file.type);
+      const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+      if (hasValidType || hasValidExtension) {
+        onFileSelect(file);
+      } else {
+        alert('Please upload an MP3 or WAV file.');
+      }
     }
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      onFileSelect(file);
+      // Check MIME type or file extension for audio files
+      const validMimeTypes = ['audio/mp3', 'audio/wav', 'audio/mpeg', 'audio/x-wav', 'audio/wave'];
+      const validExtensions = ['.mp3', '.wav'];
+      const hasValidType = validMimeTypes.includes(file.type);
+      const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+      if (hasValidType || hasValidExtension) {
+        onFileSelect(file);
+      } else {
+        alert('Please upload an MP3 or WAV file.');
+      }
     }
   };
 

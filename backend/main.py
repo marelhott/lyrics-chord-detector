@@ -400,7 +400,7 @@ async def download_spotify(spotify_url: str = Form(...)):
             transcription = whisper_service.transcribe(audio_path)
             
             print("Step 2/5: Detecting chords...")
-            chords = chord_service.detect_chords(audio_path)
+            chords = await chord_service.detect_chords(audio_path)
             
             # Detect key
             key = chord_service.detect_key(audio_path)
