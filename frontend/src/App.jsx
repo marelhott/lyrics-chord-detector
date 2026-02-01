@@ -6,8 +6,11 @@ import { ExportModal } from './components/ExportModal';
 import { transformSongData } from './lib/songUtils';
 
 function normalizeApiUrl(value) {
-  const trimmed = String(value ?? '').trim().replace(/\/+$/, '');
+  let trimmed = String(value ?? '').trim().replace(/\/+$/, '');
   if (!trimmed) return '/api';
+  if (!trimmed.startsWith('/') && !/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 

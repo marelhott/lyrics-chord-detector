@@ -10,7 +10,6 @@ scipy==1.11.4
 librosa==0.10.1
 pydub==0.25.1
 numba==0.58.1
-demucs==4.0.1
 
 # OpenAI Whisper API (transcription)
 openai>=1.57.0

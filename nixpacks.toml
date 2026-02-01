@@ -10,6 +10,7 @@ cmds = [
     "python3 -m pip install --upgrade pip",
     "echo '=== Installing Python Dependencies ==='",
     "pip install -r requirements.txt",
+    "if [ \"${INSTALL_DEMUCS:-0}\" = \"1\" ]; then echo '=== Installing Demucs (optional) ==='; pip install -r requirements.demucs.txt; fi",
     "echo '=== Installing Frontend ==='",
     "cd frontend && npm ci"
 ]
