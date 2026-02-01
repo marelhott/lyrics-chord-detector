@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import sys
+import threading
 from typing import List, Dict, Optional, Callable, Tuple
 import warnings
 warnings.filterwarnings('ignore')
@@ -112,6 +113,24 @@ def _has_demucs() -> bool:
         return False
 
 
+def _prefetch_demucs_model() -> None:
+    demucs_mode = (os.getenv("CHORD_DETECTION_DEMUCS") or "").strip().lower()
+    prefetch = (os.getenv("CHORD_DETECTION_DEMUCS_PREFETCH") or "").strip().lower()
+    if demucs_mode not in ("1", "true", "yes", "auto"):
+        return
+    if prefetch in ("0", "false", "no"):
+        return
+    if not _has_demucs():
+        return
+
+    model = (os.getenv("CHORD_DETECTION_DEMUCS_MODEL") or "mdx").strip()
+    try:
+        import demucs.pretrained  # type: ignore
+        demucs.pretrained.get_model(model)
+    except Exception:
+        return
+
+
 def _demucs_separate_to_other(audio_path: str) -> Tuple[Optional[str], Optional[str]]:
     if not _has_demucs():
         return None, None
@@ -169,6 +188,9 @@ class ChordDetectionService:
         self.provider = "local"
         self.use_demucs = (os.getenv("CHORD_DETECTION_DEMUCS") or "").strip().lower() in ("1", "true", "yes")
         print("✅ Using local chord detection")
+        if _has_demucs():
+            t = threading.Thread(target=_prefetch_demucs_model, daemon=True)
+            t.start()
 
     def is_configured(self) -> bool:
         return True
