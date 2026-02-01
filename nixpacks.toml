@@ -6,13 +6,13 @@ NIXPACKS_PYTHON_VERSION = "3.11"
 
 [phases.install]
 cmds = [
-    "echo '=== Ensuring pip ==='",
-    "python3 -m ensurepip --upgrade || true",
-    "echo '=== Upgrading pip ==='",
-    "python3 -m pip install --upgrade pip",
+    "echo '=== Creating venv ==='",
+    "python3 -m venv /opt/venv",
+    "echo '=== Upgrading pip (venv) ==='",
+    "/opt/venv/bin/pip install --upgrade pip",
     "echo '=== Installing Python Dependencies ==='",
-    "pip install -r requirements.txt",
-    "if [ \"${INSTALL_DEMUCS:-0}\" = \"1\" ]; then echo '=== Installing Demucs (optional) ==='; pip install -r requirements.demucs.txt; fi",
+    "/opt/venv/bin/pip install -r requirements.txt",
+    "if [ \"${INSTALL_DEMUCS:-0}\" = \"1\" ]; then echo '=== Installing Demucs (optional) ==='; /opt/venv/bin/pip install -r requirements.demucs.txt; fi",
     "echo '=== Installing Frontend ==='",
     "cd frontend && npm ci"
 ]
@@ -26,4 +26,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+cmd = "cd backend && /opt/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
