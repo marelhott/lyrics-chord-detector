@@ -9,6 +9,8 @@ from typing import Optional, Dict, List
 import warnings
 warnings.filterwarnings('ignore')
 
+from services.audio_utils import prepare_audio_for_transcription
+
 
 class FastWhisperService:
     """Fast Whisper service using OpenAI API."""
@@ -33,13 +35,25 @@ class FastWhisperService:
         self.http_client = httpx.Client()
         self.client = OpenAI(api_key=self.api_key, http_client=self.http_client)
         self.model = "whisper-1"
+
+        self.validate_credentials()
         
         print(f"✅ OpenAI Whisper API ready (model: {self.model})")
+
+    def validate_credentials(self) -> None:
+        try:
+            _ = self.client.models.list()
+        except Exception as e:
+            error_message = str(e)
+            if "invalid_api_key" in error_message or "Incorrect API key" in error_message or " 401" in error_message:
+                raise ValueError("OpenAI authentication failed. Check OPENAI_API_KEY.")
+            raise
     
     def transcribe(
         self,
         audio_path: str,
-        language: Optional[str] = None
+        language: Optional[str] = None,
+        vocal_heavy: bool = False,
     ) -> Dict:
         """
         Transcribe audio using OpenAI Whisper API with word-level timestamps.
@@ -55,19 +69,30 @@ class FastWhisperService:
             - segments: List of segments with timestamps
             - words: List of words with timestamps (for chord alignment)
         """
-        print(f"Transcribing with OpenAI API: {audio_path}")
-        print(f"Language: {language or 'auto-detect'}")
+        warnings_list: List[str] = []
+        prepared_path = prepare_audio_for_transcription(audio_path, vocal_heavy=bool(vocal_heavy))
         
-        # Open audio file
-        with open(audio_path, "rb") as audio_file:
-            # Transcribe with word-level timestamps
-            transcript = self.client.audio.transcriptions.create(
-                model=self.model,
-                file=audio_file,
-                language=language,
-                response_format="verbose_json",
-                timestamp_granularities=["word", "segment"]  # Request both!
-            )
+        try:
+            with open(prepared_path, "rb") as audio_file:
+                try:
+                    transcript = self.client.audio.transcriptions.create(
+                        model=self.model,
+                        file=audio_file,
+                        language=language,
+                        response_format="verbose_json",
+                        timestamp_granularities=["word", "segment"],
+                    )
+                except Exception as e:
+                    error_message = str(e)
+                    if "invalid_api_key" in error_message or "Incorrect API key" in error_message:
+                        raise RuntimeError("OpenAI authentication failed. Check OPENAI_API_KEY.")
+                    raise
+        finally:
+            if prepared_path != audio_path:
+                try:
+                    os.unlink(prepared_path)
+                except Exception:
+                    pass
         
         # Extract data
         text = transcript.text
@@ -83,16 +108,7 @@ class FastWhisperService:
                 "words": []  # Will be filled from word-level data
             })
         
-        # Extract word-level timestamps
         all_words = []
-        
-        # Debug: Check what we got from API
-        print(f"DEBUG: transcript type: {type(transcript)}")
-        print(f"DEBUG: has 'words' attr: {hasattr(transcript, 'words')}")
-        if hasattr(transcript, 'words'):
-            print(f"DEBUG: words value: {transcript.words}")
-            print(f"DEBUG: words type: {type(transcript.words)}")
-        
         if hasattr(transcript, 'words') and transcript.words:
             for word in transcript.words:
                 all_words.append({
@@ -101,8 +117,7 @@ class FastWhisperService:
                     "end": round(word.end, 2)
                 })
         else:
-            print("WARNING: No word-level timestamps in API response!")
-            print(f"DEBUG: Available attributes: {dir(transcript)}")
+            warnings_list.append("No word-level timestamps returned by transcription; using segment-only alignment.")
         
         # Assign words to segments
         for segment in segments:
@@ -112,17 +127,12 @@ class FastWhisperService:
             ]
             segment["words"] = segment_words
         
-        print(f"✅ Transcription complete!")
-        print(f"   Language: {detected_language}")
-        print(f"   Segments: {len(segments)}")
-        print(f"   Words: {len(all_words)}")
-        print(f"   Text length: {len(text)} chars")
-        
         return {
             "text": text,
             "language": detected_language,
             "segments": segments,
-            "words": all_words
+            "words": all_words,
+            "warnings": warnings_list,
         }
     
     def detect_language(self, audio_path: str) -> str:
@@ -137,11 +147,17 @@ class FastWhisperService:
         """
         # Transcribe first 30 seconds to detect language
         with open(audio_path, "rb") as audio_file:
-            transcript = self.client.audio.transcriptions.create(
-                model=self.model,
-                file=audio_file,
-                response_format="verbose_json"
-            )
+            try:
+                transcript = self.client.audio.transcriptions.create(
+                    model=self.model,
+                    file=audio_file,
+                    response_format="verbose_json"
+                )
+            except Exception as e:
+                error_message = str(e)
+                if "invalid_api_key" in error_message or "Incorrect API key" in error_message:
+                    raise RuntimeError("OpenAI authentication failed. Check OPENAI_API_KEY.")
+                raise
         
         return transcript.language
 

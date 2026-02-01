@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Check, Music } from 'lucide-react';
 
 function pseudoRandom01(seed) {
@@ -7,30 +7,21 @@ function pseudoRandom01(seed) {
 }
 
 const steps = [
-  'Extracting vocals',
-  'Detecting lyrics',
-  'Detecting chords',
-  'Aligning song structure'
+  { key: 'starting', label: 'Preparing job' },
+  { key: 'transcribing', label: 'Detecting lyrics' },
+  { key: 'detecting_chords', label: 'Detecting chords' },
+  { key: 'detecting_key', label: 'Detecting key' },
+  { key: 'detecting_structure', label: 'Detecting song structure' },
+  { key: 'aligning', label: 'Aligning chords with lyrics' },
+  { key: 'formatting', label: 'Formatting output' },
 ];
 
-export function ProcessingScreen({ trackInfo }) {
-  const [currentStep, setCurrentStep] = useState(0);
-
-  useEffect(() => {
-    // Variable delay: 10s for first 3 steps, fast for others
-    const delay = currentStep < 3 ? 10000 : 700;
-
-    const timeout = setTimeout(() => {
-      setCurrentStep(prev => {
-        if (prev < steps.length - 1) {
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, delay);
-
-    return () => clearTimeout(timeout);
-  }, [currentStep]);
+export function ProcessingScreen({ trackInfo, job }) {
+  const currentStep = useMemo(() => {
+    if (!job || !job.step) return 0;
+    const stepIndex = steps.findIndex((s) => s.key === job.step);
+    return stepIndex >= 0 ? stepIndex : 0;
+  }, [job]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
@@ -93,7 +84,7 @@ export function ProcessingScreen({ trackInfo }) {
         ) : (
           <>
             <h2 className="text-3xl font-bold text-foreground mb-3">Analyzing track…</h2>
-            <p className="text-muted-foreground mb-12">This usually takes under a minute</p>
+            <p className="text-muted-foreground mb-12">{job?.progress ? `${job.progress}%` : 'This usually takes under a minute'}</p>
           </>
         )}
 
@@ -101,7 +92,7 @@ export function ProcessingScreen({ trackInfo }) {
         <div className="bg-card border border-border rounded-xl p-8">
           <div className="space-y-5">
             {steps.map((step, index) => (
-              <div key={step} className="flex items-center gap-4">
+              <div key={step.key} className="flex items-center gap-4">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${index < currentStep
                     ? 'bg-primary'
@@ -122,7 +113,7 @@ export function ProcessingScreen({ trackInfo }) {
                   className={`text-left transition-colors ${index <= currentStep ? 'text-foreground' : 'text-muted-foreground'
                     }`}
                 >
-                  {step}
+                  {step.label}
                 </span>
               </div>
             ))}
@@ -132,4 +123,3 @@ export function ProcessingScreen({ trackInfo }) {
     </div>
   );
 }
-

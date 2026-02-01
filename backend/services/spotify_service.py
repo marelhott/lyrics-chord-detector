@@ -66,6 +66,16 @@ class SpotifyDownloadService:
             
         except Exception as e:
             raise ValueError(f"Failed to fetch Spotify track info: {str(e)}")
+
+    def get_track_info(self, spotify_url: str) -> tuple[str, str]:
+        return self._extract_track_info_from_url(spotify_url)
+
+    def _safe_filename_part(self, value: str, max_len: int = 120) -> str:
+        cleaned = re.sub(r"[\\/:*?\"<>|\x00-\x1F]", " ", value)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        if not cleaned:
+            return "Unknown"
+        return cleaned[:max_len]
     
     def download_from_url(self, spotify_url: str, output_dir: Optional[str] = None) -> str:
         """
@@ -95,6 +105,9 @@ class SpotifyDownloadService:
             # Extract track info from Spotify
             track_name, artist_name = self._extract_track_info_from_url(spotify_url)
             search_query = f"{track_name} {artist_name} audio"
+
+            safe_track_name = self._safe_filename_part(track_name)
+            safe_artist_name = self._safe_filename_part(artist_name)
             
             print(f"🔍 Searching for: {search_query}")
             
@@ -106,7 +119,7 @@ class SpotifyDownloadService:
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                'outtmpl': os.path.join(output_dir, f'{track_name} - {artist_name}.%(ext)s'),
+                'outtmpl': os.path.join(output_dir, f'{safe_track_name} - {safe_artist_name}.%(ext)s'),
                 'quiet': True,
                 'no_warnings': True,
                 'default_search': 'ytsearch1',  # Search YouTube and take first result

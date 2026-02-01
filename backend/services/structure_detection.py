@@ -47,7 +47,7 @@ class StructureDetectionService:
         lyric_structure = self._analyze_lyric_patterns(segments)
         
         # Merge results
-        structure = self._merge_structure(audio_boundaries, lyric_structure, segments, chords)
+        structure = self._merge_structure(audio_path, audio_boundaries, lyric_structure, segments, chords)
         
         print(f"Detected {len(structure)} sections")
         return structure
@@ -139,6 +139,7 @@ class StructureDetectionService:
     
     def _merge_structure(
         self,
+        audio_path: str,
         audio_boundaries: List[float],
         lyric_structure: Dict,
         segments: List[Dict],
@@ -215,7 +216,7 @@ class StructureDetectionService:
         if segments:
             last_vocal_time = segments[-1]["end"]
             try:
-                total_duration = librosa.get_duration(path=audio_path) if 'audio_path' in locals() else last_vocal_time + 10
+                total_duration = librosa.get_duration(path=audio_path)
                 if total_duration - last_vocal_time > 3:
                     structure.append({
                         "type": "outro",
@@ -223,7 +224,7 @@ class StructureDetectionService:
                         "end": round(total_duration, 2),
                         "segments": []
                     })
-            except:
+            except Exception:
                 pass
         
         return structure

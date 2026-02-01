@@ -25,7 +25,7 @@ python3 main.py
 
 Backend runs on `http://localhost:8000`
 
-**Note:** First startup takes 5-10 minutes to download AI models (~2GB)
+Requires `OPENAI_API_KEY` for transcription.
 
 ### Frontend
 
@@ -42,7 +42,6 @@ Frontend runs on `http://localhost:5173`
 ## 📖 Full Documentation
 
 - **Backend Setup:** [`backend/README.md`](backend/README.md)
-- **Implementation Plan:** See artifacts in `.gemini/antigravity/brain/`
 - **API Documentation:** See backend README
 
 ---
@@ -50,14 +49,13 @@ Frontend runs on `http://localhost:5173`
 ## 🏗️ Architecture
 
 ### Backend (Python FastAPI)
-- **Whisper medium** - High-quality speech-to-text with word timestamps
-- **Madmom** - Deep learning chord detection
+- **OpenAI Whisper API** - Speech-to-text (requires `OPENAI_API_KEY`)
+- **Chord detection** - Local chord estimation (chroma + Viterbi smoothing)
 - **Librosa** - Audio analysis for song structure
 - **Multi-language** - 99+ languages supported
 
 ### Frontend (React + Vite)
 - **Ultimate Guitar Preview** - Professional lyrics display
-- **Language Selector** - Easy language switching
 - **Export Options** - TXT, PDF, JSON formats
 - **Responsive Design** - Works on desktop and mobile
 
@@ -100,9 +98,7 @@ What the hell am I doing here? I don't belong here
 
 **Backend:**
 - FastAPI 0.109.0
-- OpenAI Whisper (medium model)
-- stable-ts 2.14.2
-- Madmom 0.16.1
+- OpenAI (Whisper API)
 - Librosa 0.10.1
 
 **Frontend:**
@@ -125,13 +121,12 @@ What the hell am I doing here? I don't belong here
 - **Vercel** - Alternative
 - **Cloudflare Pages** - Fast CDN
 
-See [`implementation_plan.md`](.gemini/antigravity/brain/*/implementation_plan.md) for detailed deployment instructions.
 
 ---
 
 ## 📝 API Endpoints
 
-### `POST /process-audio`
+### `POST /api/process-audio`
 Process audio file with lyrics and chord detection.
 
 **Parameters:**
@@ -151,10 +146,10 @@ Process audio file with lyrics and chord detection.
 }
 ```
 
-### `POST /detect-language`
+### `POST /api/detect-language`
 Detect language without full processing.
 
-### `GET /health`
+### `GET /api/health`
 Health check endpoint.
 
 ---
@@ -184,13 +179,6 @@ whisper_service = get_whisper_service(model_size="large-v3")  # Best quality
 ```
 
 Options: `tiny`, `base`, `small`, `medium`, `large`, `large-v3`
-
-### Disable Madmom
-
-Edit `backend/main.py`:
-```python
-chord_service = get_chord_service(use_madmom=False)  # Use librosa fallback
-```
 
 ---
 

@@ -36,6 +36,7 @@ class AlignmentService:
         filtered_chords = self._filter_significant_chords(chords)
         
         aligned = []
+        prev_word_index = None
         
         for chord in filtered_chords:
             chord_time = chord["time"]
@@ -59,8 +60,7 @@ class AlignmentService:
             
             segment = segments[segment_idx]
             
-            # Find the word closest to this chord time
-            word_data = self._find_closest_word(segment, chord_time)
+            word_data = self._find_closest_word(segment, chord_time, prev_word_index)
             
             if word_data:
                 aligned.append({
@@ -73,6 +73,7 @@ class AlignmentService:
                     "confidence": chord.get("confidence", 0.85),
                     "is_fundamental": self._is_fundamental_chord(chord["chord"])
                 })
+                prev_word_index = word_data["index"]
             else:
                 # No words in segment (shouldn't happen, but handle it)
                 aligned.append({
@@ -110,8 +111,8 @@ class AlignmentService:
             chord_name = chord["chord"]
             chord_time = chord["time"]
             
-            # Skip if same chord detected within 2 seconds
-            if last_chord == chord_name and (chord_time - last_time) < 2.0:
+            # Skip if same chord detected within 1.25 seconds
+            if last_chord == chord_name and (chord_time - last_time) < 1.25:
                 continue
             
             # Skip very complex/unusual chords (likely detection errors)
@@ -142,7 +143,7 @@ class AlignmentService:
         
         return None
     
-    def _find_closest_word(self, segment: Dict, time: float) -> Optional[Dict]:
+    def _find_closest_word(self, segment: Dict, time: float, prev_word_index: Optional[int] = None) -> Optional[Dict]:
         """
         Find the word in a segment closest to the given time.
         
@@ -159,25 +160,53 @@ class AlignmentService:
             # No word-level data, return None
             return None
         
-        # Find word with start time closest to chord time
-        closest_word = None
-        closest_distance = float('inf')
-        closest_index = None
-        
+        window_s = 0.9
+        segment_start = segment.get("start", 0.0)
+        candidates = []
         for i, word in enumerate(words):
-            word_start = word.get("start", segment["start"])
-            distance = abs(word_start - time)
-            
-            if distance < closest_distance:
-                closest_distance = distance
-                closest_word = word.get("word", "")
-                closest_index = i
-        
-        if closest_word:
-            return {
-                "word": closest_word,
-                "index": closest_index
-            }
+            try:
+                word_start = float(word.get("start") if word.get("start") is not None else segment_start)
+            except Exception:
+                word_start = float(segment_start or 0.0)
+            try:
+                word_end = float(word.get("end") if word.get("end") is not None else word_start)
+            except Exception:
+                word_end = float(word_start)
+            mid = (word_start + word_end) / 2.0
+            if abs(mid - time) <= window_s or (word_start <= time <= word_end):
+                candidates.append((i, word, word_start, word_end, mid))
+
+        if not candidates:
+            candidates = []
+            for i, w in enumerate(words):
+                try:
+                    ws = float(w.get("start") if w.get("start") is not None else segment_start)
+                except Exception:
+                    ws = float(segment_start or 0.0)
+                try:
+                    we = float(w.get("end") if w.get("end") is not None else ws)
+                except Exception:
+                    we = float(ws)
+                candidates.append((i, w, ws, we, (ws + we) / 2.0))
+
+        best = None
+        best_score = float("inf")
+        for i, word, word_start, word_end, mid in candidates:
+            distance = abs(mid - time)
+            jump_penalty = 0.0
+            if prev_word_index is not None:
+                jump_penalty = 0.25 * abs(i - prev_word_index)
+            inside_bonus = -0.35 if (word_start <= time <= word_end) else 0.0
+            score = distance + jump_penalty + inside_bonus
+            if score < best_score:
+                best_score = score
+                best = (i, word)
+
+        if best:
+            i, word = best
+            word_text = (word.get("word") or "").strip()
+            if word_text:
+                return {"word": word_text, "index": i}
         
         return None
     
@@ -186,6 +215,7 @@ class AlignmentService:
         structure: List[Dict],
         aligned_chords: List[Dict],
         title: str = "Unknown Song",
+        artist: Optional[str] = None,
         key: str = "Unknown"
     ) -> str:
         """
@@ -204,6 +234,8 @@ class AlignmentService:
         
         # Add Header with Title and Key
         output.append(f"Title: {title}")
+        if artist:
+            output.append(f"Artist: {artist}")
         output.append(f"Key: {key}")
         output.append("")
         output.append("-" * 40)

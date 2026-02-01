@@ -5,6 +5,7 @@ Handles audio trimming and hash calculation.
 from pydub import AudioSegment
 import hashlib
 import os
+import tempfile
 
 
 def trim_audio_to_duration(file_path: str, duration_seconds: int = 30) -> str:
@@ -25,12 +26,25 @@ def trim_audio_to_duration(file_path: str, duration_seconds: int = 30) -> str:
         # Trim to specified duration (convert to milliseconds)
         trimmed = audio[:duration_seconds * 1000]
         
-        # Generate output path
         base, ext = os.path.splitext(file_path)
-        output_path = f"{base}_trimmed{ext}"
-        
-        # Export trimmed audio
-        trimmed.export(output_path, format="mp3")
+        ext_lower = ext.lower()
+
+        export_format = None
+        output_ext = ext_lower
+
+        if ext_lower in {".mp3", ".mpeg"}:
+            export_format = "mp3"
+            output_ext = ".mp3"
+        elif ext_lower in {".wav", ".wave"}:
+            export_format = "wav"
+            output_ext = ".wav"
+        else:
+            export_format = "mp3"
+            output_ext = ".mp3"
+
+        output_path = f"{base}_trimmed{output_ext}"
+
+        trimmed.export(output_path, format=export_format)
         
         return output_path
     except Exception as e:
@@ -78,3 +92,20 @@ def get_audio_duration(file_path: str) -> float:
     except Exception as e:
         print(f"Error getting audio duration: {str(e)}")
         raise
+
+
+def prepare_audio_for_transcription(file_path: str, vocal_heavy: bool) -> str:
+    if not vocal_heavy:
+        return file_path
+
+    audio = AudioSegment.from_file(file_path)
+    audio = audio.set_channels(1).set_frame_rate(16000)
+    try:
+        audio = audio.normalize()
+    except Exception:
+        pass
+
+    fd, out_path = tempfile.mkstemp(suffix="_vh.wav")
+    os.close(fd)
+    audio.export(out_path, format="wav")
+    return out_path

@@ -1,90 +1,35 @@
-# 🎵 Lyrics & Chord Detector v2.0 - Backend Setup
+# 🎵 Lyrics & Chord Detector v2.0 - Backend
 
-## ✨ New Features
+## 📦 Instalace
 
-- ✅ **Multi-language support** (Czech, Slovak, English, auto-detect)
-- ✅ **Word-level timestamps** for precise chord alignment
-- ✅ **Advanced chord detection** (7th, sus, dim, aug chords)
-- ✅ **Song structure detection** (Intro, Verse, Chorus, Bridge, Outro)
-- ✅ **Ultimate Guitar style formatting** with chords above lyrics
+Používá se `requirements.txt` v rootu repozitáře:
 
----
+```bash
+pip3 install -r requirements.txt
+```
 
-## 📦 Installation
+Vyžaduje nastavit `OPENAI_API_KEY` (transkripce).
 
-### 1. Install Python Dependencies
+## 🚀 Spuštění
 
 ```bash
 cd backend
-pip install -r requirements.txt
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-**Note:** This will install:
-- `stable-ts` - For word-level timestamps (requires ~5 minutes first time)
-- `madmom` - For advanced chord detection (requires ~10 minutes first time)
-- Whisper `medium` model (~1.5GB download on first run)
+API poběží na `http://localhost:8000/api`.
 
-### 2. Test Installation
+## 🧪 Testy endpointů
 
 ```bash
-python -c "import stable_whisper; import madmom; print('✅ All dependencies installed!')"
+curl http://localhost:8000/api/health
 ```
-
----
-
-## 🚀 Running the Backend
 
 ```bash
-cd backend
-python main.py
-```
-
-The API will start on `http://localhost:8000`
-
-**First startup will take 5-10 minutes** to download models:
-- Whisper medium model (~1.5GB)
-- Madmom chord recognition models (~500MB)
-
----
-
-## 🧪 Testing the API
-
-### Test 1: Basic Health Check
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected response:
-```json
-{
-  "status": "healthy",
-  "whisper_model": "medium",
-  "chord_detection": "madmom",
-  "version": "2.0.0"
-}
-```
-
-### Test 2: Language Detection
-
-```bash
-curl -X POST http://localhost:8000/detect-language \
-  -F "file=@path/to/your/song.mp3"
-```
-
-### Test 3: Full Processing (English)
-
-```bash
-curl -X POST http://localhost:8000/process-audio \
+curl -X POST http://localhost:8000/api/process-audio \
   -F "file=@path/to/your/song.mp3" \
-  -F "language=en"
-```
-
-### Test 4: Full Processing (Czech - Auto-detect)
-
-```bash
-curl -X POST http://localhost:8000/process-audio \
-  -F "file=@path/to/your/song.mp3"
+  -F "language=en" \
+  -F "vocal_heavy=false"
 ```
 
 ---
@@ -95,6 +40,8 @@ curl -X POST http://localhost:8000/process-audio \
 {
   "success": true,
   "filename": "song.mp3",
+  "title": "Song",
+  "artist": "Artist",
   "text": "Full transcribed lyrics...",
   "language": "en",
   "segments": [
@@ -165,29 +112,7 @@ whisper_service = get_whisper_service(model_size="medium")
 - `medium` (1.5GB) - **Recommended** - Good balance
 - `large-v3` (3GB) - Best quality, slower
 
-### Disable Madmom (Use Librosa Fallback)
 
-Edit `backend/main.py` line 38:
-
-```python
-chord_service = get_chord_service(use_madmom=False)
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Error: "stable-ts not installed"
-
-```bash
-pip install -U stable-ts
-```
-
-### Error: "madmom not installed"
-
-```bash
-pip install madmom
-```
 
 **Note:** Madmom requires system dependencies on some platforms:
 

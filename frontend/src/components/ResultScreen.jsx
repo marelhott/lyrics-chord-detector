@@ -59,25 +59,6 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
 
   const lyricsData = useAdaptedData(songData);
 
-  // Calculate stats for each section
-  const getSectionStats = (sectionName) => {
-    const sectionItems = lyricsData.filter(s => s.section === sectionName);
-
-    const totalWords = sectionItems.reduce((acc, s) =>
-      acc + s.lines.reduce((wordAcc, line) =>
-        wordAcc + line.lyrics.split(' ').filter(w => w.trim()).length, 0), 0);
-
-    // Count unique chords only
-    const uniqueChords = new Set();
-    sectionItems.forEach(s => {
-      s.lines.forEach(line => {
-        line.chords.forEach(chord => uniqueChords.add(chord));
-      });
-    });
-
-    return { words: totalWords, chords: uniqueChords.size };
-  };
-
   // Calculate total stats
   const totalStats = useMemo(() => {
     const totalWords = lyricsData.reduce((acc, s) =>
@@ -243,6 +224,18 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
                     >
                       Structured
                     </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(rawResult.formatted_output);
+                        } catch {
+                          alert('Copy failed');
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg border transition-all text-sm bg-card border-border text-muted-foreground hover:border-primary/50"
+                    >
+                      Copy
+                    </button>
                   </div>
                 )}
 
@@ -330,4 +323,3 @@ export function ResultsScreen({ fileName, songData, rawResult, onExport, onNewAn
     </div>
   );
 }
-

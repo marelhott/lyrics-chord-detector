@@ -8,18 +8,13 @@
 2. Click "New Project"
 3. Select "Deploy from GitHub repo"
 4. Choose `lyrics-chord-detector` repository
-5. Railway will auto-detect Python
+5. Railway will use Nixpacks config (`nixpacks.toml`)
 
 ### 2. Configure Build
 
-Railway should auto-detect:
-- ✅ `runtime.txt` → Python 3.11.7
-- ✅ `Aptfile` → ffmpeg, libsndfile1
-- ✅ `Procfile` → Start command
-
-**If not, manually set:**
-- **Build Command:** `pip install -r requirements.railway.txt`
-- **Start Command:** `cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT`
+This repo ships a working Nixpacks setup:
+- `nixpacks.toml` installs Python + Node + ffmpeg and builds the frontend.
+- `railway.json` sets builder to Nixpacks.
 
 ### 3. Add Environment Variables
 
@@ -97,32 +92,11 @@ After successful deployment:
 
 ## Current Configuration Files
 
-### ✅ runtime.txt
-```
-python-3.11.7
-```
+### ✅ nixpacks.toml
+Defines packages (Python 3.11, Node 20, ffmpeg) + install/build/start phases.
 
-### ✅ Aptfile
-```
-ffmpeg
-libsndfile1
-```
-
-### ✅ Procfile
-```
-web: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-### ✅ requirements.railway.txt
-Minimal dependencies (~150MB vs ~500MB)
-
-### ✅ .railwayignore
-```
-**/install.sh
-**/install.sh.backup
-**/*.sh.backup
-backend/install.sh
-```
+### ✅ Procfile (optional)
+Railway uses Nixpacks start command, Procfile is optional.
 
 ---
 

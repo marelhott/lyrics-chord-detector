@@ -1,336 +1,386 @@
-"""
-Hybrid chord detection service.
-- Free tier: Essentia (70-80% accuracy, lightweight)
-- Premium tier: Modal.com with Madmom+Demucs (89%+ accuracy)
-"""
+"""Chord detection service."""
 import numpy as np
 import librosa
-import httpx
 import os
-from typing import List, Dict, Optional
+import asyncio
+import shutil
+import subprocess
+import tempfile
+import sys
+from typing import List, Dict, Optional, Callable, Tuple
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import available services
-try:
-    from services.essentia_chord_service import get_essentia_service
-    ESSENTIA_AVAILABLE = True
-except ImportError:
-    ESSENTIA_AVAILABLE = False
-    print("Warning: Essentia not installed.")
+ 
 
-try:
-    from madmom.features.chords import DeepChromaChordRecognitionProcessor
-    MADMOM_AVAILABLE = True
-except ImportError:
-    MADMOM_AVAILABLE = False
-    print("Warning: madmom not installed. Using fallback chord detection.")
 
+def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
+    x = x - np.max(x, axis=axis, keepdims=True)
+    e = np.exp(x)
+    return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
+
+
+def _viterbi_decode(log_emissions: np.ndarray, log_transitions: np.ndarray) -> np.ndarray:
+    n_states, n_frames = log_emissions.shape
+    dp = np.full((n_states, n_frames), -np.inf, dtype=np.float64)
+    back = np.zeros((n_states, n_frames), dtype=np.int32)
+
+    dp[:, 0] = log_emissions[:, 0]
+    back[:, 0] = 0
+
+    for t in range(1, n_frames):
+        prev = dp[:, t - 1][:, None] + log_transitions
+        back[:, t] = np.argmax(prev, axis=0)
+        dp[:, t] = log_emissions[:, t] + prev[back[:, t], np.arange(n_states)]
+
+    states = np.zeros(n_frames, dtype=np.int32)
+    states[-1] = int(np.argmax(dp[:, -1]))
+    for t in range(n_frames - 1, 0, -1):
+        states[t - 1] = int(back[states[t], t])
+    return states
+
+
+def _chord_templates() -> Tuple[List[str], np.ndarray]:
+    pitch_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    major = np.array([1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0], dtype=np.float32)
+    minor = np.array([1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0], dtype=np.float32)
+
+    labels: List[str] = ["N"]
+    templates: List[np.ndarray] = [np.zeros(12, dtype=np.float32)]
+    for i, p in enumerate(pitch_names):
+        labels.append(p)
+        templates.append(np.roll(major, i))
+    for i, p in enumerate(pitch_names):
+        labels.append(f"{p}m")
+        templates.append(np.roll(minor, i))
+
+    T = np.stack(templates, axis=0)
+    T = T / (np.linalg.norm(T, axis=1, keepdims=True) + 1e-9)
+    return labels, T
+
+
+def _default_transition_logp(n_states: int, self_prob: float = 0.985) -> np.ndarray:
+    if n_states < 2:
+        return np.zeros((n_states, n_states), dtype=np.float64)
+    other = (1.0 - self_prob) / float(n_states - 1)
+    P = np.full((n_states, n_states), other, dtype=np.float64)
+    np.fill_diagonal(P, self_prob)
+    return np.log(P + 1e-12)
+
+
+def _segments_from_states(
+    labels: List[str],
+    states: np.ndarray,
+    times: np.ndarray,
+    probs: Optional[np.ndarray] = None,
+    final_end_time: Optional[float] = None,
+) -> List[Dict[str, float]]:
+    out: List[Dict[str, float]] = []
+    if len(states) == 0:
+        return out
+
+    start_idx = 0
+    cur = int(states[0])
+    for i in range(1, len(states)):
+        s = int(states[i])
+        if s != cur:
+            start_t = float(times[start_idx])
+            end_t = float(times[i])
+            chord = labels[cur]
+            conf = None
+            if probs is not None:
+                conf = float(np.mean(probs[cur, start_idx:i]))
+            out.append({"chord": chord, "start": start_t, "end": end_t, "confidence": conf})
+            start_idx = i
+            cur = s
+
+    start_t = float(times[start_idx])
+    end_t = float(final_end_time if final_end_time is not None else times[-1])
+    chord = labels[cur]
+    conf = None
+    if probs is not None:
+        conf = float(np.mean(probs[cur, start_idx:]))
+    out.append({"chord": chord, "start": start_t, "end": end_t, "confidence": conf})
+    return out
+
+
+def _has_demucs() -> bool:
+    try:
+        import demucs.separate  # type: ignore
+        return True
+    except Exception:
+        return False
+
+
+def _demucs_separate_to_other(audio_path: str) -> Tuple[Optional[str], Optional[str]]:
+    if not _has_demucs():
+        return None, None
+
+    tmpdir = tempfile.mkdtemp(prefix="demucs-")
+    outdir = os.path.join(tmpdir, "out")
+    os.makedirs(outdir, exist_ok=True)
+    model = (os.getenv("CHORD_DETECTION_DEMUCS_MODEL") or "mdx").strip()
+    device = (os.getenv("CHORD_DETECTION_DEMUCS_DEVICE") or "cpu").strip()
+    overlap = (os.getenv("CHORD_DETECTION_DEMUCS_OVERLAP") or "0.1").strip()
+    segment = (os.getenv("CHORD_DETECTION_DEMUCS_SEGMENT") or "10").strip()
+    jobs = (os.getenv("CHORD_DETECTION_DEMUCS_JOBS") or "").strip()
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "demucs.separate",
+        "--two-stems",
+        "vocals",
+        "--name",
+        model,
+        "--device",
+        device,
+        "--shifts",
+        "0",
+        "--overlap",
+        overlap,
+        "--segment",
+        segment,
+        "--out",
+        outdir,
+        audio_path,
+    ]
+    if jobs:
+        cmd += ["-j", jobs]
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    base = os.path.splitext(os.path.basename(audio_path))[0]
+    for root, _dirs, files in os.walk(outdir):
+        for f in files:
+            if f.startswith(base) and "no_vocals" in f:
+                return os.path.join(root, f), tmpdir
+            if f.startswith(base) and f.startswith("other"):
+                return os.path.join(root, f), tmpdir
+            if f == "no_vocals.wav" or f == "no_vocals.flac" or f == "no_vocals.mp3":
+                return os.path.join(root, f), tmpdir
+            if f == "other.mp3" or f == "other.wav" or f == "no_vocals.mp3" or f == "no_vocals.wav":
+                return os.path.join(root, f), tmpdir
+    return None, tmpdir
 
 class ChordDetectionService:
     """Service for detecting chords from audio files."""
     
-    def __init__(self, use_madmom: bool = False):
-        """
-        Initialize chord detection service.
-        
-        Args:
-            use_madmom: Use Madmom if available (for local dev), otherwise use Essentia
-        """
-        self.modal_endpoint = os.getenv("MODAL_CHORD_ENDPOINT")
-        
-        # Try Essentia first (best for Railway)
-        if ESSENTIA_AVAILABLE:
-            self.essentia_service = get_essentia_service()
-            self.use_essentia = self.essentia_service is not None
-        else:
-            self.use_essentia = False
-            self.essentia_service = None
-        
-        # Madmom fallback (for local dev)
-        self.use_madmom = use_madmom and MADMOM_AVAILABLE
-        if self.use_madmom:
-            print("Initializing Madmom chord detection...")
-            self.processor = DeepChromaChordRecognitionProcessor()
-            print("Madmom chord detection ready")
-        else:
-            self.processor = None
-        
-        # Log active method
-        if self.use_essentia:
-            print("✅ Using Essentia chord detection (70-80% accuracy)")
-        elif self.use_madmom:
-            print("✅ Using Madmom chord detection (89%+ accuracy)")
-        else:
-            print("✅ Using Librosa chord detection (fallback, 60-70% accuracy)")
-    
-    async def detect_chords(self, audio_path: str, quality: str = "free") -> List[Dict]:
-        """
-        Detect chords from audio file with quality tier support.
-        
-        Args:
-            audio_path: Path to audio file
-            quality: Detection quality tier:
-                - 'free': Essentia (70-80% accuracy) or Librosa fallback
-                - 'premium': Modal.com with Madmom+Demucs (89%+ accuracy)
-        
-        Returns:
-            List of chord detections:
-            [
-                {"chord": "C", "time": 0.5, "confidence": 0.85},
-                {"chord": "Am", "time": 2.0, "confidence": 0.90},
-                ...
-            ]
-        """
-        # Premium tier: Call Modal.com
-        if quality == "premium" and self.modal_endpoint:
-            return await self._detect_premium_modal(audio_path)
-        
-        # Free tier: Essentia or fallback
-        if self.use_essentia:
-            return self.essentia_service.detect_chords(audio_path)
-        elif self.use_madmom:
-            return self._detect_with_madmom(audio_path)
-        else:
-            return self._detect_with_librosa(audio_path)
-    
-    async def _detect_premium_modal(self, audio_path: str) -> List[Dict]:
-        """Call Modal.com endpoint for premium chord detection."""
-        try:
-            print("🚀 Calling Modal.com for premium chord detection...")
-            
-            # Read audio file
-            with open(audio_path, "rb") as f:
-                audio_bytes = f.read()
-            
-            # Call Modal endpoint
-            async with httpx.AsyncClient(timeout=300.0) as client:
-                response = await client.post(
-                    self.modal_endpoint,
-                    files={"audio_file": ("audio.mp3", audio_bytes, "audio/mpeg")}
-                )
-                response.raise_for_status()
-                result = response.json()
-            
-            print(f"✅ Modal.com returned {result.get('chord_count', 0)} chords")
-            return result.get("chords", [])
-            
-        except Exception as e:
-            print(f"❌ Modal premium detection failed: {e}")
-            print("Falling back to Essentia...")
-            
-            # Fallback to free tier
-            if self.use_essentia:
-                return self.essentia_service.detect_chords(audio_path)
-            else:
-                return self._detect_with_librosa(audio_path)
+    def __init__(self):
+        self.provider = "local"
+        self.use_demucs = (os.getenv("CHORD_DETECTION_DEMUCS") or "").strip().lower() in ("1", "true", "yes")
+        print("✅ Using local chord detection")
 
+    def is_configured(self) -> bool:
+        return True
     
-    def _detect_premium(self, audio_path: str) -> List[Dict]:
-        """Detect chords using premium tier (Demucs + Madmom)."""
-        try:
-            from services.demucs_service import get_demucs_service
-            import os
-            
-            # Get Demucs service
-            demucs = get_demucs_service()
-            
-            if not demucs:
-                print("Demucs not available, falling back to Madmom")
-                return self._detect_with_madmom(audio_path)
-            
-            # Step 1: Separate guitar using Demucs
-            print("🎸 Separating guitar track with Demucs...")
-            guitar_path = demucs.separate_guitar(audio_path)
-            
+    async def detect_chords(
+        self,
+        audio_path: str,
+        *,
+        progress_cb: Optional[Callable[[str, int], None]] = None,
+        vocal_heavy: bool = False,
+    ) -> List[Dict]:
+        chosen_audio_path = audio_path
+        demucs_tmpdir = None
+        demucs_mode = (os.getenv("CHORD_DETECTION_DEMUCS") or "").strip().lower()
+        use_demucs = False
+        if self.use_demucs:
+            use_demucs = True
+        elif demucs_mode in ("1", "true", "yes"):
+            use_demucs = True
+        elif demucs_mode == "auto":
+            use_demucs = bool(vocal_heavy)
+
+        if use_demucs:
+            if progress_cb:
+                progress_cb("chords_separation", 1)
             try:
-                # Step 2: Detect chords on isolated guitar with Madmom
-                print("🎵 Detecting chords on isolated guitar...")
-                chords = self._detect_with_madmom(guitar_path)
-                
-                print(f"✅ Premium detection complete: {len(chords)} chords")
-                return chords
-                
-            finally:
-                # Cleanup separated audio
-                if os.path.exists(guitar_path):
-                    os.unlink(guitar_path)
-                    
-        except Exception as e:
-            print(f"Premium detection failed: {str(e)}")
-            print("Falling back to standard Madmom...")
-            return self._detect_with_madmom(audio_path)
+                separated, tmpdir = await asyncio.to_thread(_demucs_separate_to_other, audio_path)
+                demucs_tmpdir = tmpdir
+                if separated:
+                    chosen_audio_path = separated
+            except Exception:
+                chosen_audio_path = audio_path
 
-    
-    def _detect_with_madmom(self, audio_path: str) -> List[Dict]:
-        """Detect chords using Madmom (more accurate)."""
-        print("Detecting chords with Madmom...")
-        
-        # Process audio file
-        chords = self.processor(audio_path)
-        
-        # Format results
-        result = []
-        prev_chord = None
-        
-        for time, chord_label in chords:
-            # Skip if same as previous chord (merge consecutive)
-            if chord_label == prev_chord:
-                continue
-            
-            # Parse chord label (Madmom format: "C:maj", "A:min", "G:7", etc.)
-            chord_name = self._parse_madmom_chord(chord_label)
-            
-            # Skip "N" (no chord) detections
-            if chord_name == "N":
-                continue
-            
-            result.append({
-                "chord": chord_name,
-                "time": round(float(time), 2),
-                "confidence": 0.85  # Madmom doesn't provide confidence, use default
-            })
-            
-            prev_chord = chord_label
-        
-        print(f"Detected {len(result)} chord changes")
-        return result
-    
-    def _parse_madmom_chord(self, chord_label: str) -> str:
-        """
-        Parse Madmom chord label to standard format.
-        
-        Madmom format: "C:maj", "A:min", "G:7", "D:min7", etc.
-        Output format: "C", "Am", "G7", "Dm7", etc.
-        """
-        if chord_label == "N":
-            return "N"
-        
-        parts = chord_label.split(":")
-        root = parts[0]
-        
-        if len(parts) == 1:
-            return root
-        
-        quality = parts[1]
-        
-        # Convert to standard notation
-        if quality == "maj":
-            return root
-        elif quality == "min":
-            return root + "m"
-        elif quality == "7":
-            return root + "7"
-        elif quality == "maj7":
-            return root + "maj7"
-        elif quality == "min7":
-            return root + "m7"
-        elif quality == "dim":
-            return root + "dim"
-        elif quality == "aug":
-            return root + "aug"
-        elif quality == "sus4":
-            return root + "sus4"
-        elif quality == "sus2":
-            return root + "sus2"
-        else:
-            # Unknown quality, return as-is
-            return chord_label.replace(":", "")
-    
-    def _detect_with_librosa(self, audio_path: str) -> List[Dict]:
-        """
-        Fallback chord detection using librosa (less accurate).
-        This is the same as the original implementation.
-        """
-        print("Detecting chords with librosa (fallback)...")
-        
         try:
-            # Load audio
-            y, sr = librosa.load(audio_path, sr=22050)
-            
-            # Extract chroma features
-            chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=512)
-            
-            hop_length = 512
-            frame_duration = hop_length / sr
-            
-            # Extended chord templates
-            chord_templates = {
-                # Major chords
-                'C': [1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
-                'C#': [0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-                'D': [0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-                'D#': [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
-                'E': [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-                'F': [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
-                'F#': [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-                'G': [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-                'G#': [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
-                'A': [0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
-                'A#': [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-                'B': [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1],
-                # Minor chords
-                'Cm': [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
-                'Dm': [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-                'Em': [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1],
-                'Fm': [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
-                'Gm': [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0],
-                'Am': [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            }
-            
-            chords = []
-            
-            # Detect chords for each frame
-            for i in range(0, chroma.shape[1], 20):  # Every 20 frames (~0.5s)
-                if i + 20 > chroma.shape[1]:
-                    break
-                
-                # Average chroma for this segment
-                avg_chroma = np.mean(chroma[:, i:i+20], axis=1)
-                
-                # Find best matching chord
-                best_match = None
-                best_score = -1
-                
-                for chord_name, template in chord_templates.items():
-                    # Cosine similarity
-                    score = np.dot(avg_chroma, template) / (
-                        np.linalg.norm(avg_chroma) * np.linalg.norm(template) + 1e-10
-                    )
-                    
-                    if score > best_score:
-                        best_score = score
-                        best_match = chord_name
-                
-                # Only add if confidence is high enough
-                if best_score > 0.5:
-                    time = i * frame_duration
-                    chords.append({
-                        "chord": best_match,
-                        "time": round(time, 2),
-                        "confidence": round(float(best_score), 2)
-                    })
-            
-            # Merge consecutive duplicate chords
-            merged_chords = []
-            if chords:
-                current = chords[0]
-                for next_chord in chords[1:]:
-                    if next_chord["chord"] == current["chord"]:
-                        continue
-                    else:
-                        merged_chords.append(current)
-                        current = next_chord
-                merged_chords.append(current)
-            
-            print(f"Detected {len(merged_chords)} chord changes")
-            return merged_chords
-        
-        except Exception as e:
-            print(f"Error in chord detection: {str(e)}")
+            chords = await asyncio.to_thread(self._detect_chords_local, chosen_audio_path, progress_cb)
+        finally:
+            if demucs_tmpdir and os.path.isdir(demucs_tmpdir):
+                try:
+                    import shutil as _shutil
+                    _shutil.rmtree(demucs_tmpdir, ignore_errors=True)
+                except Exception:
+                    pass
+        chords = self._normalize_chords(chords)
+        return self._post_process_chords(chords)
+
+    def get_model_version(self) -> str:
+        return "local:hmm-chroma-viterbi"
+
+    def _detect_chords_local(
+        self,
+        audio_path: str,
+        progress_cb: Optional[Callable[[str, int], None]] = None,
+    ) -> List[Dict]:
+        if progress_cb:
+            progress_cb("chords_loading", 2)
+
+        y, sr = librosa.load(audio_path, sr=22050, mono=True)
+        if len(y) == 0:
             return []
 
+        if progress_cb:
+            progress_cb("chords_features", 5)
 
+        y_harm, y_perc = librosa.effects.hpss(y)
+        hop_length = 2048
+
+        chroma = librosa.feature.chroma_cens(y=y_harm, sr=sr, hop_length=hop_length)
+        chroma = np.maximum(chroma, 0.0)
+        chroma = chroma / (np.linalg.norm(chroma, axis=0, keepdims=True) + 1e-9)
+
+        duration_s = float(len(y)) / float(sr)
+        times = librosa.frames_to_time(np.arange(chroma.shape[1]), sr=sr, hop_length=hop_length)
+
+        try:
+            _tempo, beats = librosa.beat.beat_track(y=y_perc, sr=sr, hop_length=hop_length)
+            if beats is not None and len(beats) >= 2:
+                chroma = librosa.util.sync(chroma, beats, aggregate=np.median)
+                beat_times = librosa.frames_to_time(beats, sr=sr, hop_length=hop_length)
+                times = beat_times
+        except Exception:
+            pass
+
+        labels, templates = _chord_templates()
+        sim = templates @ chroma
+
+        temperatures = float(os.getenv("CHORD_LOCAL_TEMPERATURE") or 0.08)
+        log_em = sim / max(temperatures, 1e-3)
+
+        n_states = len(labels)
+        log_tr = _default_transition_logp(n_states)
+
+        if progress_cb:
+            progress_cb("chords_decoding", 12)
+
+        states = _viterbi_decode(log_em, log_tr)
+        probs = _softmax(log_em, axis=0)
+
+        segs = _segments_from_states(labels, states, times, probs, final_end_time=duration_s)
+        out: List[Dict] = []
+        for s in segs:
+            chord = s.get("chord")
+            if chord is None:
+                continue
+            out.append(
+                {
+                    "chord": chord,
+                    "start": round(float(s.get("start") or 0.0), 2),
+                    "end": round(float(s.get("end") or 0.0), 2),
+                    "time": round(float(s.get("start") or 0.0), 2),
+                    "confidence": round(float(s.get("confidence") or 0.0), 3),
+                }
+            )
+        if progress_cb:
+            progress_cb("chords", 18)
+        return out
+
+    def _normalize_chords(self, chords: List[Dict]) -> List[Dict]:
+        normalized: List[Dict] = []
+        for item in chords or []:
+            if not isinstance(item, dict):
+                continue
+            chord = item.get("chord")
+            if not chord:
+                continue
+
+            time_value = item.get("time")
+            if time_value is None and item.get("start") is not None:
+                time_value = item.get("start")
+            try:
+                t = round(float(time_value or 0.0), 2)
+            except Exception:
+                t = 0.0
+
+            out = {
+                "chord": str(chord).replace("**", "").replace("*", ""),
+                "time": t,
+            }
+
+            if item.get("confidence") is not None:
+                try:
+                    out["confidence"] = round(float(item["confidence"]), 3)
+                except Exception:
+                    pass
+            if item.get("start") is not None:
+                try:
+                    out["start"] = round(float(item["start"]), 2)
+                except Exception:
+                    pass
+            if item.get("end") is not None:
+                try:
+                    out["end"] = round(float(item["end"]), 2)
+                except Exception:
+                    pass
+            normalized.append(out)
+
+        normalized.sort(key=lambda x: x.get("time", 0.0))
+        return normalized
+
+    def _post_process_chords(
+        self,
+        chords: List[Dict],
+        *,
+        min_duration_s: float = 0.6,
+        max_events: int = 600,
+    ) -> List[Dict]:
+        if not chords:
+            return []
+
+        merged: List[Dict] = []
+        last_chord = None
+        for c in chords:
+            chord_name = c.get("chord")
+            if not chord_name or chord_name == "N":
+                continue
+            if last_chord == chord_name:
+                continue
+            merged.append(c)
+            last_chord = chord_name
+
+        if len(merged) <= 1:
+            return merged
+
+        with_end = []
+        for i, c in enumerate(merged):
+            next_time = merged[i + 1]["time"] if i + 1 < len(merged) else None
+            out = dict(c)
+            if out.get("start") is None:
+                out["start"] = out.get("time")
+            if next_time is not None and out.get("end") is None:
+                out["end"] = round(float(next_time), 2)
+            with_end.append(out)
+
+        filtered: List[Dict] = []
+        for c in with_end:
+            start = c.get("start")
+            end = c.get("end")
+            if start is None or end is None:
+                filtered.append(c)
+                continue
+            try:
+                if float(end) - float(start) < min_duration_s:
+                    continue
+            except Exception:
+                pass
+            filtered.append(c)
+
+        if len(filtered) > max_events:
+            step = int(np.ceil(len(filtered) / max_events))
+            filtered = filtered[::step]
+
+        return filtered
+    
     def detect_key(self, audio_path: str) -> str:
         """
         Detect the key (tonicity) of the song.
@@ -404,6 +454,6 @@ def get_chord_service(use_madmom: bool = True) -> ChordDetectionService:
     global _chord_service
     
     if _chord_service is None:
-        _chord_service = ChordDetectionService(use_madmom)
+        _chord_service = ChordDetectionService()
     
     return _chord_service

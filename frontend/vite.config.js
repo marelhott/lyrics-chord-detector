@@ -9,9 +9,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/process-audio': 'http://localhost:8000',
-      '/process-demo': 'http://localhost:8000',
-      '/detect-language': 'http://localhost:8000',
+      '/api': 'http://localhost:8000',
     }
   }
 })

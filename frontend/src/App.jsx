@@ -5,7 +5,17 @@ import { ResultsScreen } from './components/ResultScreen'; // Note: filename is 
 import { ExportModal } from './components/ExportModal';
 import { transformSongData } from './lib/songUtils';
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api' : '/api');
+function normalizeApiUrl(value) {
+  const trimmed = String(value ?? '').trim().replace(/\/+$/, '');
+  if (!trimmed) return '/api';
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('upload');
@@ -15,18 +25,30 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
   const [trackInfo, setTrackInfo] = useState(null); // { trackName, artistName }
+  const [job, setJob] = useState(null);
 
-  const handleFileSelect = async (selectedFile) => {
-    setFileName(selectedFile.name.replace(/\.(mp3|wav)$/i, ''));
+  const handleFileSelect = async (selectedFile, options) => {
+    const baseName = selectedFile.name.replace(/\.(mp3|wav)$/i, '')
+    setFileName(baseName)
+    if (baseName.includes(' - ')) {
+      const [trackNameRaw, artistNameRaw] = baseName.split(' - ', 2)
+      const trackName = (trackNameRaw || '').trim() || 'Unknown Track'
+      const artistName = (artistNameRaw || '').trim() || 'Unknown Artist'
+      setTrackInfo({ trackName, artistName })
+    } else {
+      setTrackInfo(null)
+    }
     setCurrentScreen('processing');
 
     const formData = new FormData();
     formData.append('file', selectedFile);
-    // Optional: Add quality parameter if we want to expose it later
-    // formData.append('quality', 'premium'); 
+    formData.append('vocal_heavy', String(Boolean(options?.vocalHeavy)));
+    if (options?.language && options.language !== 'auto') {
+      formData.append('language', options.language);
+    }
 
     try {
-      const response = await fetch(`${API_URL}/process-audio`, {
+      const response = await fetch(`${API_URL}/jobs`, {
         method: 'POST',
         body: formData,
       });
@@ -43,25 +65,55 @@ export default function App() {
         }
       }
 
-      const backendData = await response.json();
-      console.log('Backend Data:', backendData);
+      const { job_id } = await response.json();
+      setJob({ id: job_id, status: 'queued', progress: 0, step: 'queued' });
 
-      setRawResult(backendData);
+      while (true) {
+        await sleep(900);
+        const jobResponse = await fetch(`${API_URL}/jobs/${job_id}`);
+        if (!jobResponse.ok) {
+          throw new Error('Failed to poll job status');
+        }
+        const jobData = await jobResponse.json();
+        setJob(jobData.job);
 
-      const transformedData = transformSongData(backendData);
-      console.log('Transformed Data:', transformedData);
+        if (jobData.job.status === 'failed') {
+          throw new Error(jobData.job.error || 'Processing failed');
+        }
 
-      setSongData(transformedData);
-      setCurrentScreen('result');
+        if (jobData.job.status === 'succeeded') {
+          const resultResponse = await fetch(`${API_URL}/jobs/${job_id}/result`);
+          if (!resultResponse.ok) {
+            throw new Error('Failed to fetch job result');
+          }
+          const backendData = await resultResponse.json();
+          const resultTitle = backendData.title || baseName || 'Untitled song'
+          const resultArtist = backendData.artist || ''
+          setFileName(resultArtist ? `${resultTitle} - ${resultArtist}` : resultTitle)
+          if (backendData.title) {
+            setTrackInfo({
+              trackName: resultTitle,
+              artistName: resultArtist || 'Unknown Artist',
+            })
+          }
+          setRawResult(backendData);
+          const transformedData = transformSongData(backendData);
+          setSongData(transformedData);
+          setCurrentScreen('result');
+          setJob(null);
+          break;
+        }
+      }
 
     } catch (err) {
       console.error('Error processing file:', err);
       alert(`Error: ${err.message}`);
       setCurrentScreen('upload');
+      setJob(null);
     }
   };
 
-  const handleSpotifySubmit = async (spotifyUrl) => {
+  const handleSpotifySubmit = async (spotifyUrl, options) => {
     // Extract track info from URL for display
     try {
       const response = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`);
@@ -93,9 +145,13 @@ export default function App() {
 
     const formData = new FormData();
     formData.append('spotify_url', spotifyUrl);
+    formData.append('vocal_heavy', String(Boolean(options?.vocalHeavy)));
+    if (options?.language && options.language !== 'auto') {
+      formData.append('language', options.language);
+    }
 
     try {
-      const response = await fetch(`${API_URL}/download-spotify`, {
+      const response = await fetch(`${API_URL}/jobs`, {
         method: 'POST',
         body: formData,
       });
@@ -112,22 +168,49 @@ export default function App() {
         }
       }
 
-      const backendData = await response.json();
-      console.log('Backend Data:', backendData);
+      const { job_id } = await response.json();
+      setJob({ id: job_id, status: 'queued', progress: 0, step: 'queued' });
 
-      setFileName(backendData.title || 'Spotify Track');
-      setRawResult(backendData);
+      while (true) {
+        await sleep(900);
+        const jobResponse = await fetch(`${API_URL}/jobs/${job_id}`);
+        if (!jobResponse.ok) {
+          throw new Error('Failed to poll job status');
+        }
+        const jobData = await jobResponse.json();
+        setJob(jobData.job);
 
-      const transformedData = transformSongData(backendData);
-      console.log('Transformed Data:', transformedData);
+        if (jobData.job.status === 'failed') {
+          throw new Error(jobData.job.error || 'Download failed');
+        }
 
-      setSongData(transformedData);
-      setCurrentScreen('result');
+        if (jobData.job.status === 'succeeded') {
+          const resultResponse = await fetch(`${API_URL}/jobs/${job_id}/result`);
+          if (!resultResponse.ok) {
+            throw new Error('Failed to fetch job result');
+          }
+          const backendData = await resultResponse.json();
+          const resultTitle = backendData.title || trackInfo?.trackName || 'Spotify Track'
+          const resultArtist = backendData.artist || trackInfo?.artistName || ''
+          setFileName(resultArtist ? `${resultTitle} - ${resultArtist}` : resultTitle);
+          setTrackInfo({
+            trackName: resultTitle,
+            artistName: resultArtist || 'Unknown Artist',
+          })
+          setRawResult(backendData);
+          const transformedData = transformSongData(backendData);
+          setSongData(transformedData);
+          setCurrentScreen('result');
+          setJob(null);
+          break;
+        }
+      }
 
     } catch (err) {
       console.error('Error downloading from Spotify:', err);
       alert(`Error: ${err.message}`);
       setCurrentScreen('upload');
+      setJob(null);
     }
   };
 
@@ -136,6 +219,7 @@ export default function App() {
     setSongData(null);
     setRawResult(null);
     setCurrentScreen('upload');
+    setJob(null);
   };
 
   return (
@@ -145,7 +229,7 @@ export default function App() {
       )}
 
       {currentScreen === 'processing' && (
-        <ProcessingScreen trackInfo={trackInfo} />
+        <ProcessingScreen trackInfo={trackInfo} job={job} />
       )}
 
       {currentScreen === 'result' && songData && (

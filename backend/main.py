@@ -1,9 +1,16 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, APIRouter
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import tempfile
 import os
+import asyncio
+import hashlib
+import json
+import logging
+import time
+import uuid
+import functools
 from typing import Optional
 import warnings
 warnings.filterwarnings('ignore')
@@ -17,7 +24,7 @@ from services.fast_whisper_service import get_fast_whisper_service  # Fast OpenA
 from services.chord_detection import get_chord_service
 from services.structure_detection import get_structure_service
 from services.alignment_service import get_alignment_service
-from services.audio_utils import trim_audio_to_duration, calculate_audio_hash
+from services.audio_utils import trim_audio_to_duration, calculate_audio_hash, get_audio_duration
 from services.spotify_service import get_spotify_service
 
 app = FastAPI(
@@ -28,6 +35,241 @@ app = FastAPI(
 
 ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav"}
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "12"))
+CACHE_DIR = os.getenv("CACHE_DIR", "/tmp/lyrics_chord_detector_cache")
+
+
+def _is_allowed_audio_upload(upload: UploadFile) -> bool:
+    filename = upload.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in {".mp3", ".wav"}:
+        return True
+    return (upload.content_type or "") in ALLOWED_AUDIO_TYPES
+
+
+def _infer_title_artist_from_filename(filename: str) -> tuple[str, Optional[str]]:
+    base = os.path.splitext(os.path.basename(filename or ""))[0].replace("_", " ").strip()
+    if " - " in base:
+        left, right = base.split(" - ", 1)
+        title = left.strip() or "Unknown Song"
+        artist = right.strip() or None
+        return title.title(), artist.title() if artist else None
+    title = base.replace("-", " ").strip() or "Unknown Song"
+    return title.title(), None
+
+
+logger = logging.getLogger("lyrics_chord_detector")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+
+def _get_request_id(request: Request) -> str:
+    incoming = request.headers.get("x-request-id") or request.headers.get("x-correlation-id")
+    if incoming and len(incoming) <= 64:
+        return incoming
+    return uuid.uuid4().hex
+
+
+def _log_event(event: str, request_id: str, **data) -> None:
+    payload = {"event": event, "request_id": request_id, **data}
+    logger.info(json.dumps(payload, ensure_ascii=False))
+
+
+_rate_limit_buckets: dict[str, list[float]] = {}
+
+
+def _enforce_rate_limit(ip: str) -> None:
+    now = time.time()
+    window_start = now - 60.0
+    bucket = _rate_limit_buckets.get(ip, [])
+    bucket = [t for t in bucket if t >= window_start]
+    if len(bucket) >= RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    bucket.append(now)
+    _rate_limit_buckets[ip] = bucket
+
+
+def _cache_path_for_key(raw_key: str) -> str:
+    digest = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+    return os.path.join(CACHE_DIR, f"{digest}.json")
+
+
+def _cache_get(raw_key: str):
+    try:
+        path = _cache_path_for_key(raw_key)
+        if not os.path.exists(path):
+            return None
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _cache_set(raw_key: str, value) -> None:
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        path = _cache_path_for_key(raw_key)
+        tmp_path = f"{path}.{uuid.uuid4().hex}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(value, f, ensure_ascii=False)
+        os.replace(tmp_path, path)
+    except Exception:
+        return
+
+
+_jobs: dict[str, dict] = {}
+_jobs_lock = asyncio.Lock()
+
+
+async def _job_get(job_id: str) -> Optional[dict]:
+    async with _jobs_lock:
+        job = _jobs.get(job_id)
+        return dict(job) if job else None
+
+
+async def _job_set(job_id: str, job: dict) -> None:
+    async with _jobs_lock:
+        _jobs[job_id] = job
+
+
+async def _job_patch(job_id: str, **fields) -> None:
+    async with _jobs_lock:
+        if job_id in _jobs:
+            _jobs[job_id].update(fields)
+
+
+async def _run_pipeline(
+    *,
+    request_id: str,
+    audio_path: str,
+    title: str,
+    artist: Optional[str],
+    language: Optional[str],
+    vocal_heavy: bool,
+    job_id: Optional[str] = None,
+):
+    audio_hash = calculate_audio_hash(audio_path)
+
+    last_step = "starting"
+    last_progress = 0
+    last_sent_at = 0.0
+
+    def update(step: str, progress: int) -> None:
+        nonlocal last_step, last_progress, last_sent_at
+        p = int(progress)
+        if p < last_progress:
+            p = last_progress
+        if p > 100:
+            p = 100
+        now = time.time()
+        if step == last_step and p == last_progress and (now - last_sent_at) < 0.6:
+            return
+        last_step = step
+        last_progress = p
+        last_sent_at = now
+        if job_id:
+            asyncio.create_task(_job_patch(job_id, step=step, progress=p, updatedAt=now))
+        _log_event("job_progress", request_id, job_id=job_id, step=step, progress=p)
+
+    update("transcribing", 10)
+    if whisper_service is None:
+        transcription = {
+            "text": "",
+            "language": language or "unknown",
+            "segments": [],
+            "words": [],
+            "warnings": ["Transcription is disabled (missing OPENAI_API_KEY)."],
+        }
+    else:
+        transcription_key = f"transcription:{audio_hash}:{getattr(whisper_service, 'model', 'unknown')}:{language or 'auto'}:{int(bool(vocal_heavy))}"
+        transcription = _cache_get(transcription_key)
+        if transcription is None:
+            update("transcribing", 20)
+            transcribe_fn = functools.partial(
+                whisper_service.transcribe,
+                audio_path,
+                language=language,
+                vocal_heavy=vocal_heavy,
+            )
+            transcription = await asyncio.to_thread(transcribe_fn)
+            _cache_set(transcription_key, transcription)
+    update("transcribing", 35)
+
+    warnings_list = list((transcription or {}).get("warnings", []))
+
+    update("detecting_chords", 40)
+    chords_key = f"chords:{audio_hash}:{chord_service.get_model_version()}"
+    chords = _cache_get(chords_key)
+    if chords is None:
+        chords = await chord_service.detect_chords(audio_path, progress_cb=update, vocal_heavy=bool(vocal_heavy))
+        _cache_set(chords_key, chords)
+    update("detecting_chords", 75)
+
+    update("detecting_key", 78)
+    key_key = f"key:{audio_hash}"
+    detected_key = _cache_get(key_key)
+    if detected_key is None:
+        detected_key = await asyncio.to_thread(chord_service.detect_key, audio_path)
+        _cache_set(key_key, detected_key)
+    update("detecting_key", 82)
+
+    update("detecting_structure", 84)
+    structure_key = f"structure:{audio_hash}:{language or 'auto'}:{chord_service.get_model_version()}"
+    structure = _cache_get(structure_key)
+    if structure is None:
+        structure = await asyncio.to_thread(structure_service.detect_structure, audio_path, transcription["segments"], chords)
+        _cache_set(structure_key, structure)
+    update("detecting_structure", 88)
+
+    if not structure:
+        try:
+            duration_s = float((await asyncio.to_thread(get_audio_duration, audio_path)) or 0.0)
+        except Exception:
+            duration_s = 0.0
+        structure = [{"type": "instrumental", "start": 0.0, "end": round(duration_s, 2), "segments": []}]
+
+    update("aligning", 90)
+    if transcription.get("segments"):
+        aligned_key = f"aligned:{audio_hash}:{language or 'auto'}:{chord_service.get_model_version()}"
+        aligned_chords = _cache_get(aligned_key)
+        if aligned_chords is None:
+            aligned_chords = await asyncio.to_thread(alignment_service.align_chords_with_lyrics, transcription["segments"], chords)
+            _cache_set(aligned_key, aligned_chords)
+    else:
+        aligned_chords = [{"chord": c.get("chord"), "time": c.get("time"), "confidence": c.get("confidence")} for c in chords]
+    update("aligning", 94)
+
+    update("formatting", 96)
+    formatted_key = f"formatted:{audio_hash}:{language or 'auto'}:{chord_service.get_model_version()}:{getattr(alignment_service, '__class__', type('x', (), {})).__name__}"
+    formatted_output = _cache_get(formatted_key)
+    if formatted_output is None:
+        formatted_output = await asyncio.to_thread(
+            alignment_service.format_ultimate_guitar_style,
+            structure,
+            aligned_chords,
+            title,
+            artist,
+            detected_key,
+        )
+        _cache_set(formatted_key, formatted_output)
+
+    update("formatting", 100)
+    return {
+        "success": True,
+        "audio_hash": audio_hash,
+        "text": transcription["text"],
+        "language": transcription["language"],
+        "segments": transcription["segments"],
+        "words": transcription.get("words", []),
+        "warnings": warnings_list,
+        "chords": chords,
+        "structure": structure,
+        "aligned_chords": aligned_chords,
+        "formatted_output": formatted_output,
+        "title": title,
+        "artist": artist,
+        "key": detected_key,
+    }
 
 
 def _parse_allowed_origins() -> tuple[list[str], bool]:
@@ -84,8 +326,12 @@ print("🎵 Lyrics & Chord Detector API v2.0 (Fast)")
 print("=" * 60)
 
 # Load services - using OpenAI API for speed
-whisper_service = get_fast_whisper_service()  # Fast! 5-10s instead of 5-10min
-chord_service = get_chord_service(use_madmom=False)  # Librosa fallback for Railway
+try:
+    whisper_service = get_fast_whisper_service()
+except Exception as e:
+    whisper_service = None
+    print(f"⚠️ OpenAI Whisper disabled: {e}")
+chord_service = get_chord_service()
 structure_service = get_structure_service()
 alignment_service = get_alignment_service()
 
@@ -115,10 +361,138 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "whisper_model": whisper_service.model_size,
-        "chord_detection": "madmom" if chord_service.use_madmom else "librosa",
+        "whisper_model": getattr(whisper_service, "model", None) or getattr(whisper_service, "model_size", None),
+        "whisper_enabled": whisper_service is not None,
+        "chord_detection": chord_service.get_model_version(),
+        "chord_detection_enabled": chord_service.is_configured(),
         "version": "2.0.0"
     }
+
+
+@api_router.post("/jobs")
+async def create_job(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    spotify_url: Optional[str] = Form(None),
+    language: Optional[str] = Form(None),
+    vocal_heavy: bool = Form(False),
+):
+    request_id = _get_request_id(request)
+    ip = (request.client.host if request.client else "unknown")
+    _enforce_rate_limit(ip)
+
+    if (file is None and not spotify_url) or (file is not None and spotify_url):
+        raise HTTPException(status_code=400, detail="Provide either file or spotify_url")
+
+    upload_temp_path = None
+    upload_filename = None
+    if file is not None:
+        upload_filename = file.filename
+        if not _is_allowed_audio_upload(file):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only MP3 and WAV files are supported.")
+        upload_temp_path, _file_size = await _save_upload_to_tempfile(file)
+
+    job_id = str(uuid.uuid4())
+    created_at = time.time()
+
+    job = {
+        "id": job_id,
+        "status": "queued",
+        "progress": 0,
+        "step": "queued",
+        "createdAt": created_at,
+        "updatedAt": created_at,
+        "error": None,
+        "result": None,
+        "meta": {
+            "language": language,
+            "vocal_heavy": bool(vocal_heavy),
+            "source": "spotify" if spotify_url else "upload",
+        },
+    }
+    await _job_set(job_id, job)
+
+    async def run_job():
+        try:
+            await _job_patch(job_id, status="running", step="starting", progress=1, updatedAt=time.time())
+            if spotify_url:
+                spotify_service = get_spotify_service()
+                track_title = None
+                track_artist = None
+                try:
+                    track_title, track_artist = spotify_service.get_track_info(spotify_url)
+                except Exception:
+                    track_title, track_artist = None, None
+                audio_path = await asyncio.to_thread(spotify_service.download_from_url, spotify_url)
+                try:
+                    if track_title:
+                        title = track_title
+                        artist = track_artist
+                    else:
+                        title, artist = _infer_title_artist_from_filename(audio_path)
+                    result = await _run_pipeline(
+                        request_id=request_id,
+                        audio_path=audio_path,
+                        title=title,
+                        artist=artist,
+                        language=language,
+                        vocal_heavy=bool(vocal_heavy),
+                        job_id=job_id,
+                    )
+                    result["filename"] = os.path.basename(audio_path)
+                    await _job_patch(job_id, status="succeeded", progress=100, step="formatting", result=result, updatedAt=time.time())
+                finally:
+                    if os.path.exists(audio_path):
+                        os.unlink(audio_path)
+            else:
+                try:
+                    if not upload_temp_path:
+                        raise HTTPException(status_code=400, detail="Missing upload")
+                    title, artist = _infer_title_artist_from_filename(upload_filename or "Unknown Song")
+                    result = await _run_pipeline(
+                        request_id=request_id,
+                        audio_path=upload_temp_path,
+                        title=title,
+                        artist=artist,
+                        language=language,
+                        vocal_heavy=bool(vocal_heavy),
+                        job_id=job_id,
+                    )
+                    result["filename"] = upload_filename
+                    await _job_patch(job_id, status="succeeded", progress=100, step="formatting", result=result, updatedAt=time.time())
+                finally:
+                    if upload_temp_path and os.path.exists(upload_temp_path):
+                        os.unlink(upload_temp_path)
+        except HTTPException as e:
+            await _job_patch(job_id, status="failed", step="failed", error=e.detail, updatedAt=time.time())
+        except Exception as e:
+            await _job_patch(job_id, status="failed", step="failed", error=str(e), updatedAt=time.time())
+
+    if file is not None and not upload_temp_path:
+        raise HTTPException(status_code=400, detail="Failed to persist upload")
+
+    asyncio.create_task(run_job())
+    _log_event("job_created", request_id, job_id=job_id, source=job["meta"]["source"])
+    return JSONResponse(content={"success": True, "job_id": job_id})
+
+
+@api_router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    job = await _job_get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.pop("result", None)
+    return JSONResponse(content={"success": True, "job": job})
+
+
+@api_router.get("/jobs/{job_id}/result")
+async def get_job_result(job_id: str):
+    job = await _job_get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") != "succeeded":
+        raise HTTPException(status_code=409, detail="Job not finished")
+    return JSONResponse(content=job.get("result") or {})
 
 # ... existing API routes ...
 
@@ -128,131 +502,12 @@ async def health_check():
 
 
 
-@api_router.post("/process-demo")
-async def process_demo(
-    file: UploadFile = File(...),
-    language: Optional[str] = Form(None),
-    quality: str = Form("free")  # 'free' or 'premium'
-):
-    """
-    Process audio file (demo mode - first 30 seconds only).
-    
-    Args:
-        file: Audio file (MP3, WAV, etc.)
-        language: Optional language code (e.g., 'cs', 'en')
-        quality: Chord detection quality ('free' or 'premium')
-    
-    Returns:
-        JSON with demo results (is_demo: true)
-    """
-    # Validate quality
-    if quality not in ["free", "premium"]:
-        raise HTTPException(status_code=400, detail="Invalid quality. Use 'free' or 'premium'")
-    
-    print(f"\n{'='*60}")
-    print(f"📥 Processing DEMO (30s) - Quality: {quality.upper()}")
-    print(f"{'='*60}")
-    
-    # Validate file type
-    if file.content_type not in ALLOWED_AUDIO_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type. Only MP3 and WAV files are supported."
-        )
-
-    temp_path, file_size = await _save_upload_to_tempfile(file)
-    
-    try:
-        print(f"\n{'='*60}")
-        print(f"Processing DEMO: {file.filename}")
-        print(f"{'='*60}\n")
-        
-        # Calculate audio hash for duplicate detection
-        audio_hash = calculate_audio_hash(temp_path)
-        print(f"Audio hash: {audio_hash[:16]}...")
-        
-        # Trim to 30 seconds
-        print("Trimming to 30 seconds...")
-        trimmed_path = trim_audio_to_duration(temp_path, duration_seconds=30)
-        
-        # Process trimmed audio
-        print("Step 1/5: Transcribing audio (30s)...")
-        transcription = whisper_service.transcribe(trimmed_path, language=language)
-        
-        print(f"Step 2/5: Detecting chords ({quality} quality)...")
-        chords = await chord_service.detect_chords(trimmed_path, quality=quality)
-        
-        # Detect key
-        key = chord_service.detect_key(trimmed_path)
-        
-        print("Step 3/5: Detecting song structure...")
-        structure = structure_service.detect_structure(
-            trimmed_path,
-            transcription["segments"],
-            chords
-        )
-        
-        print("Step 4/5: Aligning chords with lyrics...")
-        aligned_chords = alignment_service.align_chords_with_lyrics(
-            transcription["segments"],
-            chords
-        )
-        
-        print("Step 5/5: Formatting output...")
-        title = os.path.splitext(file.filename)[0].replace("_", " ").replace("-", " ").title()
-        
-        formatted_output = alignment_service.format_ultimate_guitar_style(
-            structure,
-            aligned_chords,
-            title=title,
-            key=key
-        )
-        
-        print(f"\n✅ Demo processing complete!")
-        print(f"{'='*60}\n")
-        
-        # Clean up trimmed file
-        if os.path.exists(trimmed_path):
-            os.unlink(trimmed_path)
-        
-        return JSONResponse(content={
-            "success": True,
-            "is_demo": True,
-            "audio_hash": audio_hash,
-            "filename": file.filename,
-            "text": transcription["text"],
-            "language": transcription["language"],
-            "segments": transcription["segments"],
-            "chords": chords,
-            "structure": structure,
-            "aligned_chords": aligned_chords,
-            "formatted_output": formatted_output,
-            "title": title,
-            "key": key,
-            "demo_duration": 30
-        })
-    
-    except Exception as e:
-        print(f"\n❌ Error processing demo: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        
-        raise HTTPException(
-            status_code=500,
-            detail=f"Processing error: {str(e)}"
-        )
-    
-    finally:
-        # Clean up original temp file
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-
 @api_router.post("/process-audio")
 async def process_audio(
+    request: Request,
     file: UploadFile = File(...),
     language: Optional[str] = Form(None),
-    quality: str = Form("free")  # 'free' or 'premium'
+    vocal_heavy: bool = Form(False),
 ):
     """
     Process audio file - transcribe lyrics and detect chords.
@@ -260,7 +515,6 @@ async def process_audio(
     Args:
         file: Audio file (MP3/WAV)
         language: Language code ("en", "cs", "sk", etc.) or None for auto-detect
-        quality: Chord detection quality ('free' or 'premium')
     
     Returns:
         JSON with:
@@ -272,12 +526,12 @@ async def process_audio(
         - aligned_chords: Chords aligned with specific words
         - formatted_output: Ultimate Guitar style text
     """
-    # Validate quality
-    if quality not in ["free", "premium"]:
-        raise HTTPException(status_code=400, detail="Invalid quality. Use 'free' or 'premium'")
-        
+    request_id = _get_request_id(request)
+    ip = (request.client.host if request.client else "unknown")
+    _enforce_rate_limit(ip)
+
     # Validate file type
-    if file.content_type not in ALLOWED_AUDIO_TYPES:
+    if not _is_allowed_audio_upload(file):
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Only MP3 and WAV files are supported."
@@ -290,74 +544,23 @@ async def process_audio(
         print(f"Processing: {file.filename}")
         print(f"Size: {file_size / 1024 / 1024:.2f}MB")
         print(f"Language: {language or 'auto-detect'}")
-        print(f"Quality: {quality.upper()}")
         print(f"{'='*60}\n")
         
-        # Step 1: Transcribe with Whisper (word-level timestamps)
-        print("Step 1/5: Transcribing audio...")
-        transcription = whisper_service.transcribe(
-            temp_path,
-            language=language
-        )
-        
-        # Step 2: Detect chords
-        print(f"Step 2/5: Detecting chords ({quality} quality)...")
-        chords = await chord_service.detect_chords(temp_path, quality=quality)
-        
-        # Detect key
-        key = chord_service.detect_key(temp_path)
-        
-        # Step 3: Detect song structure
-        print("Step 3/5: Detecting song structure...")
-        structure = structure_service.detect_structure(
-            temp_path,
-            transcription["segments"],
-            chords
-        )
-        
-        # Step 4: Align chords with lyrics
-        print("Step 4/5: Aligning chords with lyrics...")
-        aligned_chords = alignment_service.align_chords_with_lyrics(
-            transcription["segments"],
-            chords
-        )
-        
-        # Step 5: Format output (Ultimate Guitar style)
-        print("Step 5/5: Formatting output...")
-        
-        # Extract title from filename (remove extension and replace underscores)
-        title = os.path.splitext(file.filename)[0].replace("_", " ").replace("-", " ").title()
-        
-        formatted_output = alignment_service.format_ultimate_guitar_style(
-            structure,
-            aligned_chords,
+        title, artist = _infer_title_artist_from_filename(file.filename)
+        result = await _run_pipeline(
+            request_id=request_id,
+            audio_path=temp_path,
             title=title,
-            key=key
+            artist=artist,
+            language=language,
+            vocal_heavy=bool(vocal_heavy),
+            job_id=None,
         )
-        
-        print(f"\n✅ Processing complete!")
-        print(f"   - Detected language: {transcription['language']}")
-        print(f"   - Segments: {len(transcription['segments'])}")
-        print(f"   - Words: {len(transcription.get('words', []))}")
-        print(f"   - Chords: {len(chords)}")
-        print(f"   - Structure sections: {len(structure)}")
-        print(f"{'='*60}\n")
-        
-        return JSONResponse(content={
-            "success": True,
-            "filename": file.filename,
-            "text": transcription["text"],
-            "language": transcription["language"],
-            "segments": transcription["segments"],
-            "words": transcription.get("words", []),
-            "chords": chords,
-            "structure": structure,
-            "aligned_chords": aligned_chords,
-            "formatted_output": formatted_output,
-            "title": title,
-            "key": key
-        })
-    
+        result["filename"] = file.filename
+        return JSONResponse(content=result)
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"\n❌ Error processing file: {str(e)}")
         import traceback
@@ -375,7 +578,12 @@ async def process_audio(
 
 
 @api_router.post("/download-spotify")
-async def download_spotify(spotify_url: str = Form(...)):
+async def download_spotify(
+    request: Request,
+    spotify_url: str = Form(...),
+    language: Optional[str] = Form(None),
+    vocal_heavy: bool = Form(False),
+):
     """
     Download song from Spotify URL and process it.
     
@@ -385,6 +593,10 @@ async def download_spotify(spotify_url: str = Form(...)):
     Returns:
         JSON with processing results
     """
+    request_id = _get_request_id(request)
+    ip = (request.client.host if request.client else "unknown")
+    _enforce_rate_limit(ip)
+
     try:
         print(f"\n{'='*60}")
         print(f"📥 Downloading from Spotify: {spotify_url}")
@@ -392,67 +604,43 @@ async def download_spotify(spotify_url: str = Form(...)):
         
         # Download from Spotify
         spotify_service = get_spotify_service()
-        audio_path = spotify_service.download_from_url(spotify_url)
+        track_title = None
+        track_artist = None
+        try:
+            track_title, track_artist = spotify_service.get_track_info(spotify_url)
+        except Exception:
+            track_title, track_artist = None, None
+        audio_path = await asyncio.to_thread(spotify_service.download_from_url, spotify_url)
         
         try:
-            # Process the downloaded file
-            print("Step 1/5: Transcribing audio...")
-            transcription = whisper_service.transcribe(audio_path)
-            
-            print("Step 2/5: Detecting chords...")
-            chords = chord_service.detect_chords(audio_path)
-            
-            # Detect key
-            key = chord_service.detect_key(audio_path)
-            
-            print("Step 3/5: Detecting song structure...")
-            structure = structure_service.detect_structure(
-                audio_path,
-                transcription["segments"],
-                chords
-            )
-            
-            print("Step 4/5: Aligning chords with lyrics...")
-            aligned_chords = alignment_service.align_chords_with_lyrics(
-                transcription["segments"],
-                chords
-            )
-            
-            print("Step 5/5: Formatting output...")
-            
-            # Extract title from Spotify metadata if available
-            title = os.path.splitext(os.path.basename(audio_path))[0].replace("_", " ").replace("-", " ").title()
-            
-            formatted_output = alignment_service.format_ultimate_guitar_style(
-                structure,
-                aligned_chords,
+            if track_title:
+                title = track_title
+                artist = track_artist
+            else:
+                title, artist = _infer_title_artist_from_filename(audio_path)
+            result = await _run_pipeline(
+                request_id=request_id,
+                audio_path=audio_path,
                 title=title,
-                key=key
+                artist=artist,
+                language=language,
+                vocal_heavy=bool(vocal_heavy),
+                job_id=None,
             )
             
             print(f"\n✅ Processing complete!")
             print(f"{'='*60}\n")
             
-            return JSONResponse(content={
-                "success": True,
-                "filename": os.path.basename(audio_path),
-                "text": transcription["text"],
-                "language": transcription["language"],
-                "segments": transcription["segments"],
-                "words": transcription.get("words", []),
-                "chords": chords,
-                "structure": structure,
-                "aligned_chords": aligned_chords,
-                "formatted_output": formatted_output,
-                "title": title,
-                "key": key
-            })
+            result["filename"] = os.path.basename(audio_path)
+            return JSONResponse(content=result)
         
         finally:
             # Clean up downloaded file
             if os.path.exists(audio_path):
                 os.unlink(audio_path)
     
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"\n❌ Error downloading/processing Spotify URL: {str(e)}")
         import traceback
@@ -475,7 +663,7 @@ async def detect_language(file: UploadFile = File(...)):
     Returns:
         Detected language code
     """
-    if file.content_type not in ALLOWED_AUDIO_TYPES:
+    if not _is_allowed_audio_upload(file):
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Only MP3 and WAV files are supported.",
@@ -484,6 +672,8 @@ async def detect_language(file: UploadFile = File(...)):
     temp_path, _file_size = await _save_upload_to_tempfile(file)
     
     try:
+        if whisper_service is None:
+            raise HTTPException(status_code=503, detail="Language detection is not configured (missing OPENAI_API_KEY)")
         language = whisper_service.detect_language(temp_path)
         
         return JSONResponse(content={
