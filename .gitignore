@@ -30,3 +30,8 @@ lyrics-chord-detector-*/
 test.wav
 verify_essentia.py
 frontend/src_backup_before_redesign/
+
+# Xcode local state
+DerivedData/
+*.xcuserstate
+xcuserdata/

@@ -63,6 +63,24 @@ class StudioTests(unittest.TestCase):
         self.assertFalse((Path(self.temp.name)/job).exists())
         self.assertEqual(self.client.get('/api/songs/'+job).status_code, 404)
 
+    def test_stems_remain_available_during_analysis_and_after_failure(self):
+        self.login()
+        job = self.client.post('/api/songs', data={'url':'https://youtu.be/example'}).json()['id']
+        folder = Path(self.temp.name) / job
+        (folder / 'audio').mkdir()
+        (folder / 'audio' / 'vocals.mp3').write_bytes(b'ID3fixture')
+        partial = {'duration':20, 'stems':['vocals'], 'analysis':{'lyrics':'pending'}, 'words':[]}
+        (folder / 'partial.json').write_text(json.dumps(partial))
+        (folder / 'step.json').write_text(json.dumps({'step':'lyrics'}))
+        self.app.update(job, status='running')
+        detail = self.client.get('/api/songs/'+job).json()
+        self.assertEqual(detail['step'], 'lyrics')
+        self.assertEqual(detail['result'], partial)
+        self.assertEqual(self.client.get(f'/api/songs/{job}/audio/vocals').status_code, 200)
+        self.app.update(job, status='failed', error='analysis crashed')
+        self.assertEqual(self.client.get('/api/songs/'+job).json()['result'], partial)
+        self.assertEqual(self.client.get(f'/api/songs/{job}/audio/vocals').content, b'ID3fixture')
+
     def test_rejects_empty_and_invalid_upload(self):
         self.login()
         self.assertEqual(self.client.post('/api/songs',files={'file':('empty.mp3',b'', 'audio/mpeg')}).status_code,400)

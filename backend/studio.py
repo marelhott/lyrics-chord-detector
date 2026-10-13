@@ -127,7 +127,7 @@ async def protect(request, call_next):
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "version": "3.0", "engine": "cpu", "configured": bool(PASSWORD)}
+    return {"status": "healthy", "version": "3.1", "engine": "cpu", "configured": bool(PASSWORD)}
 
 
 @app.get("/api/session")
@@ -226,6 +226,12 @@ def get_song(job_id: str):
     if value["status"] == "running" and step_file.exists():
         try:
             value["step"] = json.loads(step_file.read_text())["step"]
+        except (ValueError, OSError):
+            pass
+    partial = DATA / job_id / "partial.json"
+    if value["status"] != "ready" and partial.exists():
+        try:
+            value["result"] = json.loads(partial.read_text())
         except (ValueError, OSError):
             pass
     return value
