@@ -8,3 +8,4 @@ demucs==4.0.1
 faster-whisper==1.2.1
 soundfile==0.13.1
 yt-dlp[default]
+httpx==0.28.1
