@@ -98,7 +98,7 @@ struct PlayerView: View {
         VStack(spacing: 6) {
             Slider(value: Binding(get: { scrubbing ? scrubPosition : player.position }, set: { scrubPosition = $0 }), in: 0...max(0.1, player.duration), onEditingChanged: { editing in if editing { scrubPosition = player.position; scrubbing = true } else { player.seek(scrubPosition); scrubbing = false } }).accessibilityLabel("Pozice přehrávání")
             HStack(spacing: 20) {
-                Button { player.playing ? player.pause() : player.play() } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title2).frame(width: 52, height: 52).background(StudioTheme.accent, in: Circle()).foregroundStyle(.black) }.accessibilityLabel(player.playing ? "Pozastavit" : "Přehrát").disabled(player.loading || player.error != nil)
+                Button { if player.playing { player.pause() } else { Task { await player.play() } } } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title2).frame(width: 52, height: 52).background(StudioTheme.accent, in: Circle()).foregroundStyle(.black) }.accessibilityLabel(player.playing ? "Pozastavit" : "Přehrát").disabled(player.loading || player.error != nil).accessibilityIdentifier("player.play")
                 VStack(alignment: .leading, spacing: 4) { Text(timeLabel(scrubbing ? scrubPosition : player.position)).font(.system(.subheadline, design: .monospaced)); Text(timeLabel(player.duration)).font(.caption).foregroundStyle(StudioTheme.secondary) }
                 Spacer()
                 Button { player.loop.toggle() } label: { Image(systemName: "repeat").foregroundStyle(player.loop ? StudioTheme.accent : StudioTheme.secondary).frame(width: 38, height: 44) }.accessibilityLabel("Opakovat úsek")

@@ -331,6 +331,14 @@ def audio(job_id: str, name: str):
     return FileResponse(path, media_type="audio/mpeg")
 
 
+@app.get("/api/app/ios")
+def ios_app():
+    package = DATA / "releases" / "StemStudio.ipa"
+    if not package.is_file():
+        raise HTTPException(404, "Instalační balíček zatím není dostupný.")
+    return FileResponse(package, media_type="application/octet-stream", filename="StemStudio.ipa")
+
+
 DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if DIST.exists():
     app.mount("/", StaticFiles(directory=DIST, html=True), name="studio")

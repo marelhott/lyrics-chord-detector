@@ -61,7 +61,7 @@ def main(folder):
         subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(folder / inputs["source"]), "-vn", "-ar", "44100", "-ac", "2", "-c:a", "pcm_f32le", str(source_pcm)], check=True)
         ffmpeg(source_pcm, output / "original.mp3")
         env = dict(os.environ, OMP_NUM_THREADS="4", MKL_NUM_THREADS="4")
-        subprocess.run([sys.executable, "-m", "demucs.separate", "-n", "htdemucs_6s", "-d", "cpu", "--shifts", "0", "--segment", "7", "--overlap", "0.25", "--float32", "--clip-mode", "none", "-j", "1", "-o", str(folder / "separated"), str(source_pcm)], check=True, env=env)
+        subprocess.run([sys.executable, str(Path(__file__).with_name("studio_separate.py")), str(source_pcm), str(separated)], check=True, env=env)
         separated = folder / "separated" / "htdemucs_6s" / "original"
         names = ["vocals", "drums", "bass", "guitar", "piano", "other"]
         import numpy as np

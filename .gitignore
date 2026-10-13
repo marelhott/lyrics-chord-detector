@@ -35,3 +35,6 @@ frontend/src_backup_before_redesign/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+
+*.ipa
+*.xcarchive/

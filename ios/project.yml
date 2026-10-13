@@ -13,8 +13,6 @@ settings:
     INFOPLIST_KEY_CFBundleDisplayName: Stem Studio
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-    INFOPLIST_KEY_UIBackgroundModes: [audio]
-    INFOPLIST_KEY_UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
     MARKETING_VERSION: '1.0'
     CURRENT_PROJECT_VERSION: '1'
 targets:
@@ -22,3 +20,44 @@ targets:
     type: application
     platform: iOS
     sources: StemStudio
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: '1'
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: StemStudio/Info.plist
+      properties:
+        CFBundleDisplayName: Stem Studio
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+
+  StemStudioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: StemStudioTests
+    dependencies:
+      - target: StemStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cz.mulen.stemstudio.tests
+  StemStudioUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: StemStudioUITests
+    dependencies:
+      - target: StemStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cz.mulen.stemstudio.uitests
+schemes:
+  StemStudio:
+    build:
+      targets:
+        StemStudio: all
+    test:
+      targets:
+        - StemStudioTests
+        - StemStudioUITests

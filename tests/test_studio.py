@@ -31,6 +31,7 @@ class StudioTests(unittest.TestCase):
 
     def test_auth_and_cross_site_guard(self):
         self.assertEqual(self.client.get('/api/songs').status_code, 401)
+        self.assertEqual(self.client.get('/api/app/ios').status_code, 401)
         self.assertEqual(self.client.post('/api/session', json={'password':'wrong'}).status_code, 401)
         self.login()
         self.assertEqual(self.client.get('/api/songs').status_code, 200)

@@ -27,9 +27,9 @@ struct RootView: View {
                         StudioCard {
                             VStack(alignment: .leading, spacing: 18) {
                                 Label("Vítej ve studiu", systemImage: "waveform").font(.headline)
-                                SecureField("Přístupové heslo", text: $password).textContentType(.password).submitLabel(.go).onSubmit { login() }
+                                SecureField("Přístupové heslo", text: $password).accessibilityIdentifier("login.password").textContentType(.password).submitLabel(.go).onSubmit { login() }
                                 if let error = library.error { Text(error).font(.footnote).foregroundStyle(.orange) }
-                                Button(action: login) { HStack { Text(loggingIn ? "Přihlašuji…" : "Vstoupit do studia"); Spacer(); Image(systemName: "arrow.up.right") }.padding(.vertical, 6) }.buttonStyle(.borderedProminent).disabled(password.isEmpty || loggingIn)
+                                Button(action: login) { HStack { Text(loggingIn ? "Přihlašuji…" : "Vstoupit do studia"); Spacer(); Image(systemName: "arrow.up.right") }.padding(.vertical, 6) }.buttonStyle(.borderedProminent).disabled(password.isEmpty || loggingIn).accessibilityIdentifier("login.submit")
                             }
                         }
                     }.padding(24)
@@ -67,7 +67,7 @@ struct LibraryView: View {
                     ForEach(library.songs) { song in
                         Button { path.append(song.id) } label: {
                             StudioCard { HStack(spacing: 16) { OrbArtwork().frame(width: 60, height: 60); VStack(alignment: .leading, spacing: 6) { Text(song.title).font(.system(size: 15, weight: .medium)).lineLimit(2).foregroundStyle(.white); Label(song.stepLabel, systemImage: song.processing ? "hourglass" : song.status == "ready" ? "waveform" : "exclamationmark.circle").font(.caption).foregroundStyle(song.status == "ready" ? Color.mint : StudioTheme.accent) }; Spacer(minLength: 0); Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(StudioTheme.secondary) } }
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityIdentifier("song.\(song.id)")
                     }
                 }.padding(22)
             }.background(StudioTheme.background)

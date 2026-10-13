@@ -7,29 +7,65 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		29E59C791EFB4982D7FCB869 /* StudioFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5848274DA4CD4B854787904C /* StudioFlowTests.swift */; };
 		38A4FD8C57BB1D4BD32B756B /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0F1104D103E86F8EEE0EA2 /* ImportView.swift */; };
 		39A8C35F8B266C069769FD1D /* StudioAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577ED9C314471E76ADCEB0EC /* StudioAPI.swift */; };
 		7FF8746D8ABA3511D5B8BDDF /* StemStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1108E133921877F0B327CC2C /* StemStudioApp.swift */; };
+		BE9AA2A715D0B508C2802357 /* AudioClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA536A650DAB189BB1467A8 /* AudioClockTests.swift */; };
+		C6C448676A10F7B1F454C966 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2F404BAAFFF23A583E83192A /* Assets.xcassets */; };
 		CC8C5A6C1A14928BA8E923EB /* StemPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCCBD0EC147FE2170BAFB46 /* StemPlayer.swift */; };
 		E4ABDA760E7474AE671A3929 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB02FFAD1CCBD4B21A59834D /* PlayerView.swift */; };
 		F5EC1548C4B0E2638C1FB780 /* StudioTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F6D559383C630F0984C701 /* StudioTheme.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		4C9F567EEBE6C9D3C4FDE69A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DCFE156C2337227C02F18E3B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FD25D4511B2069E8C7D9F7A6;
+			remoteInfo = StemStudio;
+		};
+		9F02639E9B03650AFD925AA5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DCFE156C2337227C02F18E3B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FD25D4511B2069E8C7D9F7A6;
+			remoteInfo = StemStudio;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		1108E133921877F0B327CC2C /* StemStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StemStudioApp.swift; sourceTree = "<group>"; };
+		2F404BAAFFF23A583E83192A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		387B868FEC4170222F24A184 /* StemStudioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StemStudioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		40F6D559383C630F0984C701 /* StudioTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioTheme.swift; sourceTree = "<group>"; };
 		4DCCBD0EC147FE2170BAFB46 /* StemPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StemPlayer.swift; sourceTree = "<group>"; };
 		577ED9C314471E76ADCEB0EC /* StudioAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioAPI.swift; sourceTree = "<group>"; };
+		5848274DA4CD4B854787904C /* StudioFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioFlowTests.swift; sourceTree = "<group>"; };
+		6636767006ADAE5ED577EC06 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8B0F1104D103E86F8EEE0EA2 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
 		DB24537E0393BFCE9A8311F4 /* StemStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StemStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE0C15FC3C31CD71857838C9 /* StemStudioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StemStudioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FB02FFAD1CCBD4B21A59834D /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		FEA536A650DAB189BB1467A8 /* AudioClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioClockTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		1285ECF0E8D2ECD07436AA62 /* StemStudioUITests */ = {
+			isa = PBXGroup;
+			children = (
+				5848274DA4CD4B854787904C /* StudioFlowTests.swift */,
+			);
+			path = StemStudioUITests;
+			sourceTree = "<group>";
+		};
 		38AC2E602D65D7AE9DC30A70 /* StemStudio */ = {
 			isa = PBXGroup;
 			children = (
+				2F404BAAFFF23A583E83192A /* Assets.xcassets */,
 				8B0F1104D103E86F8EEE0EA2 /* ImportView.swift */,
+				6636767006ADAE5ED577EC06 /* Info.plist */,
 				FB02FFAD1CCBD4B21A59834D /* PlayerView.swift */,
 				4DCCBD0EC147FE2170BAFB46 /* StemPlayer.swift */,
 				1108E133921877F0B327CC2C /* StemStudioApp.swift */,
@@ -43,14 +79,26 @@
 			isa = PBXGroup;
 			children = (
 				38AC2E602D65D7AE9DC30A70 /* StemStudio */,
+				AA01AAF4F6CB066F6987BB22 /* StemStudioTests */,
+				1285ECF0E8D2ECD07436AA62 /* StemStudioUITests */,
 				AD0B335830EBB9861FB5BA6A /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		AA01AAF4F6CB066F6987BB22 /* StemStudioTests */ = {
+			isa = PBXGroup;
+			children = (
+				FEA536A650DAB189BB1467A8 /* AudioClockTests.swift */,
+			);
+			path = StemStudioTests;
 			sourceTree = "<group>";
 		};
 		AD0B335830EBB9861FB5BA6A /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				DB24537E0393BFCE9A8311F4 /* StemStudio.app */,
+				387B868FEC4170222F24A184 /* StemStudioTests.xctest */,
+				DE0C15FC3C31CD71857838C9 /* StemStudioUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -58,11 +106,48 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		CE2DEA1F6E5E5401EBC0BB8B /* StemStudioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2869C876D3AFDADCF87435DD /* Build configuration list for PBXNativeTarget "StemStudioTests" */;
+			buildPhases = (
+				B3FBF6594825E09654350766 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				917D6A1DBD94DFB7173E3423 /* PBXTargetDependency */,
+			);
+			name = StemStudioTests;
+			packageProductDependencies = (
+			);
+			productName = StemStudioTests;
+			productReference = 387B868FEC4170222F24A184 /* StemStudioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E0FA7B25766F95B24C4A4CF4 /* StemStudioUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F66C72191680E5D8BCEB62EC /* Build configuration list for PBXNativeTarget "StemStudioUITests" */;
+			buildPhases = (
+				1F57346BD0B8CE2DADE4FD9A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				01696CE263411EEB5E2B09CC /* PBXTargetDependency */,
+			);
+			name = StemStudioUITests;
+			packageProductDependencies = (
+			);
+			productName = StemStudioUITests;
+			productReference = DE0C15FC3C31CD71857838C9 /* StemStudioUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		FD25D4511B2069E8C7D9F7A6 /* StemStudio */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 316EE9A65C56686B32BCE6C5 /* Build configuration list for PBXNativeTarget "StemStudio" */;
 			buildPhases = (
 				79E4677850C17252FBE64803 /* Sources */,
+				91749CAA4301DCBE6C65FA4A /* Resources */,
 			);
 			buildRules = (
 			);
@@ -84,6 +169,13 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					CE2DEA1F6E5E5401EBC0BB8B = {
+						ProvisioningStyle = Automatic;
+					};
+					E0FA7B25766F95B24C4A4CF4 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = FD25D4511B2069E8C7D9F7A6;
+					};
 					FD25D4511B2069E8C7D9F7A6 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -104,11 +196,32 @@
 			projectRoot = "";
 			targets = (
 				FD25D4511B2069E8C7D9F7A6 /* StemStudio */,
+				CE2DEA1F6E5E5401EBC0BB8B /* StemStudioTests */,
+				E0FA7B25766F95B24C4A4CF4 /* StemStudioUITests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		91749CAA4301DCBE6C65FA4A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6C448676A10F7B1F454C966 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
+		1F57346BD0B8CE2DADE4FD9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				29E59C791EFB4982D7FCB869 /* StudioFlowTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		79E4677850C17252FBE64803 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -122,7 +235,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B3FBF6594825E09654350766 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BE9AA2A715D0B508C2802357 /* AudioClockTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		01696CE263411EEB5E2B09CC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FD25D4511B2069E8C7D9F7A6 /* StemStudio */;
+			targetProxy = 9F02639E9B03650AFD925AA5 /* PBXContainerItemProxy */;
+		};
+		917D6A1DBD94DFB7173E3423 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FD25D4511B2069E8C7D9F7A6 /* StemStudio */;
+			targetProxy = 4C9F567EEBE6C9D3C4FDE69A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2693983898FAA52D14DAE923 /* Debug */ = {
@@ -181,13 +315,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Stem Studio";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIBackgroundModes = (
-					audio,
-				);
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = (
-					UIInterfaceOrientationPortrait,
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -203,17 +331,34 @@
 			};
 			name = Debug;
 		};
+		30B905D66ED3E14D9DD22948 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.mulen.stemstudio.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StemStudio.app/StemStudio";
+			};
+			name = Debug;
+		};
 		6004180D676A09AF461486C0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = StemStudio/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -267,13 +412,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Stem Studio";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIBackgroundModes = (
-					audio,
-				);
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = (
-					UIInterfaceOrientationPortrait,
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -288,23 +427,81 @@
 			};
 			name = Release;
 		};
+		A49A26D7D31F1E2CD173A91D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.mulen.stemstudio.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = StemStudio;
+			};
+			name = Debug;
+		};
+		A8BADF4C88AA8DACB3C46CAE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.mulen.stemstudio.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StemStudio.app/StemStudio";
+			};
+			name = Release;
+		};
+		C1A70B75376DDCD94FA909BB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.mulen.stemstudio.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = StemStudio;
+			};
+			name = Release;
+		};
 		D8A00BA2C3D56D175616D1B5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = StemStudio/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		2869C876D3AFDADCF87435DD /* Build configuration list for PBXNativeTarget "StemStudioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30B905D66ED3E14D9DD22948 /* Debug */,
+				A8BADF4C88AA8DACB3C46CAE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		316EE9A65C56686B32BCE6C5 /* Build configuration list for PBXNativeTarget "StemStudio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -319,6 +516,15 @@
 			buildConfigurations = (
 				2693983898FAA52D14DAE923 /* Debug */,
 				6B22B9A998EF6F1C2024DED3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F66C72191680E5D8BCEB62EC /* Build configuration list for PBXNativeTarget "StemStudioUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A49A26D7D31F1E2CD173A91D /* Debug */,
+				C1A70B75376DDCD94FA909BB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
