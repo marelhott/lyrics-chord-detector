@@ -267,9 +267,9 @@ class ChordDetectionService:
         try:
             _tempo, beats = librosa.beat.beat_track(y=y_perc, sr=sr, hop_length=hop_length)
             if beats is not None and len(beats) >= 2:
-                chroma = librosa.util.sync(chroma, beats, aggregate=np.median)
-                beat_times = librosa.frames_to_time(beats, sr=sr, hop_length=hop_length)
-                times = beat_times
+                boundaries = librosa.util.fix_frames(beats, x_min=0, x_max=chroma.shape[1])
+                chroma = librosa.util.sync(chroma, boundaries, aggregate=np.median)
+                times = librosa.frames_to_time(boundaries[:-1], sr=sr, hop_length=hop_length)
         except Exception:
             pass
 

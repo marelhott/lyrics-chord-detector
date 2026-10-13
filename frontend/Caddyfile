@@ -1,0 +1,5 @@
+:{$PORT:8080} {
+    reverse_proxy https://lyricschorddetector.up.railway.app {
+        header_up Host lyricschorddetector.up.railway.app
+    }
+}

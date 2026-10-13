@@ -11,6 +11,10 @@ build/
 
 # Env
 .env
+.venv/
+.local/
+.railway/
+access.txt
 
 # Cache
 .cache/

@@ -1,0 +1,10 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+python-multipart==0.0.20
+numpy==1.26.4
+scipy==1.13.1
+librosa==0.10.2.post1
+demucs==4.0.1
+faster-whisper==1.2.1
+soundfile==0.13.1
+yt-dlp[default]
