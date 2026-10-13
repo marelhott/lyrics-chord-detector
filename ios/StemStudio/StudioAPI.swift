@@ -24,6 +24,7 @@ struct SongResult: Decodable {
     let warnings: [String]
     let analysis: [String: String]?
 }
+struct AlbumArtwork: Decodable { let url: String; let album: String; let artist: String; let source: String; let sourceURL: String }
 struct Song: Decodable, Identifiable {
     let id: String
     let title: String
@@ -31,6 +32,8 @@ struct Song: Decodable, Identifiable {
     let step: String
     let error: String?
     let result: SongResult?
+    let progress: Double?
+    let artwork: AlbumArtwork?
     var processing: Bool { status == "running" || status == "queued" }
     var stepLabel: String {
         ["queued": "Čeká ve frontě", "downloading": "Získávám audio", "separating": "Odděluji nástroje", "chords": "Počítám akordy", "lyrics": "Přepisuji zpěv", "ready": "Připraveno", "failed": "Zpracování selhalo"][step] ?? step

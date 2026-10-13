@@ -17,6 +17,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+try:
+    from . import studio_artwork
+except ImportError:
+    import studio_artwork
 
 DATA = Path(os.getenv("DATA_DIR", "/data"))
 DATA.mkdir(parents=True, exist_ok=True)
@@ -162,10 +166,12 @@ def logout():
 
 
 @app.get("/api/songs")
-def songs():
+async def songs():
     with db() as conn:
         rows = conn.execute("SELECT id,title,status,step,created,error FROM songs ORDER BY created DESC").fetchall()
-    return [dict(row) for row in rows]
+    for row in rows:
+        asyncio.create_task(studio_artwork.ensure(DATA / row["id"], row["title"]))
+    return [dict(row, artwork=studio_artwork.read(DATA / row["id"])) for row in rows]
 
 
 _search_cache = {}
@@ -220,12 +226,17 @@ async def search(q: str = Query(min_length=2, max_length=120), source: str = "yo
 
 
 @app.get("/api/songs/{job_id}")
-def get_song(job_id: str):
+async def get_song(job_id: str):
     value = song(job_id)
+    value["artwork"] = studio_artwork.read(DATA / job_id)
+    asyncio.create_task(studio_artwork.ensure(DATA / job_id, value["title"]))
+    value["progress"] = 1.0 if value["status"] == "ready" else 0.0
     step_file = DATA / job_id / "step.json"
     if value["status"] == "running" and step_file.exists():
         try:
-            value["step"] = json.loads(step_file.read_text())["step"]
+            state = json.loads(step_file.read_text())
+            value["step"] = state["step"]
+            value["progress"] = state.get("progress", 0.0)
         except (ValueError, OSError):
             pass
     partial = DATA / job_id / "partial.json"
@@ -283,14 +294,16 @@ async def upload(file: UploadFile | None = File(None), url: str = Form(""), lang
                 output.write(chunk)
         if total == 0:
             raise HTTPException(400, "Soubor je prázdný.")
-        probe = await asyncio.to_thread(subprocess.run, ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", str(source)], capture_output=True, text=True, timeout=30)
+        probe = await asyncio.to_thread(subprocess.run, ["ffprobe", "-v", "error", "-show_entries", "format=duration:format_tags=title,artist,album", "-of", "json", str(source)], capture_output=True, text=True, timeout=30)
         duration = float(json.loads(probe.stdout).get("format", {}).get("duration", 0))
         if not 0 < duration <= 600:
             raise HTTPException(400, "Skladba musí mít nejvýše 10 minut.")
-        (folder / "input.json").write_text(json.dumps({"source": source.name, "language": language, "lyrics": lyrics, "duration": duration}))
+        tags = json.loads(probe.stdout).get("format", {}).get("tags", {})
+        display_title = title.strip()[:180] or tags.get("title") or Path(file.filename).stem[:180]
+        (folder / "input.json").write_text(json.dumps({"source": source.name, "language": language, "lyrics": lyrics, "duration": duration, "title": display_title, "artist": tags.get("artist", ""), "album": tags.get("album", "")}))
         now = time.time()
         with db() as conn:
-            conn.execute("INSERT INTO songs VALUES (?,?,?,?,?,?,?,?)", (job_id, Path(file.filename).stem[:180], "queued", "queued", now, now, None, None))
+            conn.execute("INSERT INTO songs VALUES (?,?,?,?,?,?,?,?)", (job_id, display_title, "queued", "queued", now, now, None, None))
     except HTTPException:
         shutil.rmtree(folder)
         raise

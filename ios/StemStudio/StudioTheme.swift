@@ -37,3 +37,63 @@ struct Eyebrow: View {
     var body: some View { Text(text.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(2).foregroundStyle(StudioTheme.secondary) }
 }
 func timeLabel(_ seconds: Double) -> String { String(format: "%d:%02d", max(0, Int(seconds)) / 60, max(0, Int(seconds)) % 60) }
+
+struct AlbumCover: View {
+    let artwork: AlbumArtwork?
+    var body: some View {
+        Group {
+            if let artwork, let url = URL(string: artwork.url) {
+                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.45))) { phase in
+                    if let image = phase.image { image.resizable().scaledToFill().transition(.opacity) }
+                    else { OrbArtwork() }
+                }
+            } else { OrbArtwork() }
+        }.clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
+            .accessibilityLabel(artwork.map { "Obal alba " + $0.album } ?? "Skladba")
+    }
+}
+struct ProcessingCard: View {
+    let song: Song
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var displayed = 0.0
+    private var fraction: Double { min(1, max(0, song.progress ?? 0)) }
+    private var stages: [String] { ["Audio", "Stemy", "Akordy", "Text"] }
+    private var stageIndex: Int { ["downloading":0, "separating":1, "stems_ready":2, "chords":2, "lyrics":3][song.step] ?? -1 }
+    var body: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Eyebrow(text: song.result == nil ? "Vznikají tvoje stopy" : "Stopy už můžeš přehrát")
+                        Text(song.stepLabel).font(.system(size: 17, weight: .medium, design: .rounded)).contentTransition(.numericText())
+                    }
+                    Spacer()
+                    if stageIndex >= 1 { Text("\(Int(displayed * 100)) %").font(.system(size: 22, weight: .light, design: .rounded)).monospacedDigit().contentTransition(.numericText()).foregroundStyle(StudioTheme.accent) }
+                    else { ProgressView().tint(StudioTheme.accent) }
+                }
+                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
+                    GeometryReader { geo in
+                        let phase = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2.4) / 2.4
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(.white.opacity(0.07))
+                            Capsule().fill(LinearGradient(colors: [.purple, StudioTheme.accent, .white.opacity(0.85)], startPoint: .leading, endPoint: .trailing)).frame(width: max(0, geo.size.width * displayed))
+                                .overlay(alignment: .leading) {
+                                    if !reduceMotion { Rectangle().fill(LinearGradient(colors: [.clear, .white.opacity(0.5), .clear], startPoint: .leading, endPoint: .trailing)).frame(width: 70).offset(x: CGFloat(phase) * (geo.size.width + 70) - 70) }
+                                }.clipShape(Capsule()).shadow(color: .purple.opacity(0.4), radius: 9)
+                        }
+                    }.frame(height: 7)
+                }.accessibilityLabel("Průběh zpracování").accessibilityValue("\(Int(fraction * 100)) procent")
+                HStack(spacing: 0) {
+                    ForEach(Array(stages.enumerated()), id: \.offset) { index, title in
+                        HStack(spacing: 5) { Image(systemName: index < stageIndex ? "checkmark.circle.fill" : index == stageIndex ? "circle.inset.filled" : "circle"); Text(title) }.font(.system(size: 11, weight: .medium)).foregroundStyle(index <= stageIndex ? StudioTheme.accent : StudioTheme.secondary.opacity(0.65))
+                        if index < 3 { Spacer(minLength: 4) }
+                    }
+                }
+                Text(song.step == "queued" ? "Čekám na volné místo. Zpracování se spustí automaticky." : "Běží v cloudu. Aplikaci můžeš klidně zavřít.").font(.caption).foregroundStyle(StudioTheme.secondary)
+            }
+        }.onAppear { displayed = fraction }
+            .onChange(of: fraction) { _, value in
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 1.2)) { displayed = value }
+            }
+    }
+}

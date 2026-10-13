@@ -14,8 +14,9 @@ struct PlayerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 if let song {
-                    HStack(spacing: 18) { OrbArtwork().frame(width: 90, height: 90); VStack(alignment: .leading, spacing: 8) { Eyebrow(text: "Uvnitř skladby"); Text(song.title).font(.system(size: 22, weight: .medium, design: .rounded)).tracking(-0.6).lineLimit(3); if let result = song.result { Text("\(timeLabel(result.duration)) · \(result.stems.count) stop · \(result.key)").font(.caption).foregroundStyle(StudioTheme.secondary) } } }
-                    if song.processing { Label(song.result == nil ? song.stepLabel : "Stemy připravené · " + song.stepLabel, systemImage: "hourglass").font(.footnote).foregroundStyle(StudioTheme.accent) }
+                    HStack(spacing: 18) { AlbumCover(artwork: song.artwork).frame(width: 90, height: 90); VStack(alignment: .leading, spacing: 8) { Eyebrow(text: "Uvnitř skladby"); Text(song.title).font(.system(size: 22, weight: .medium, design: .rounded)).tracking(-0.6).lineLimit(3); if let result = song.result { Text("\(timeLabel(result.duration)) · \(result.stems.count) stop · \(result.key)").font(.caption).foregroundStyle(StudioTheme.secondary) } } }
+                    if let artwork = song.artwork { HStack { Text("\(artwork.artist) · \(artwork.album)").lineLimit(2); Spacer(); if let url = URL(string: artwork.sourceURL) { Link(destination: url) { Image(systemName: "arrow.up.right") }.accessibilityLabel("Album v MusicBrainz") } }.font(.caption).foregroundStyle(StudioTheme.secondary) }
+                    if song.processing { ProcessingCard(song: song).transition(.opacity.combined(with: .move(edge: .top))) }
                     if let result = song.result {
                         if player.loading { ProgressView("Načítám stopy \(player.loadedCount) / \(result.stems.count + 1)").font(.footnote) }
                         if let error = player.error { Text(error).foregroundStyle(.orange).font(.footnote); Button("Načíst znovu") { Task { await player.load(song) } } }
@@ -27,10 +28,10 @@ struct PlayerView: View {
                     } else if song.status == "failed" {
                         Text(song.error ?? "Zpracování selhalo.").foregroundStyle(.orange)
                         Button("Zkusit znovu") { Task { do { let _: CreatedSong = try await StudioAPI.shared.request("/songs/\(id)/retry", method: "POST"); await refresh() } catch { fetchError = error.localizedDescription } } }.buttonStyle(.borderedProminent)
-                    } else { ProgressView().frame(maxWidth: .infinity).padding(40); Text("Oddělení běží v cloudu. Skladba zůstane v knihovně, i když aplikaci zavřeš.").font(.subheadline).foregroundStyle(StudioTheme.secondary) }
+                    } else { Text("Oddělení běží v cloudu. Skladba zůstane v knihovně, i když aplikaci zavřeš.").font(.subheadline).foregroundStyle(StudioTheme.secondary) }
                 } else { ProgressView("Načítám skladbu…").frame(maxWidth: .infinity).padding(50) }
                 if let fetchError { Text(fetchError).font(.footnote).foregroundStyle(.orange) }
-            }.padding(22)
+            }.padding(22).animation(.smooth(duration: 0.5), value: song?.processing)
         }.background(StudioTheme.background).navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) { if song?.result != nil { transport } }
             .task(id: scenePhase) {

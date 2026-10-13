@@ -30,7 +30,7 @@ def main(folder):
             timings[current_stage] = round(timings.get(current_stage, 0) + now - stage_started, 3)
             print(json.dumps({"stage": current_stage, "seconds": timings[current_stage]}), flush=True)
         current_stage, stage_started = value, now
-        atomic_json(folder / "step.json", {"step": value, "started": time.time(), "timings": timings})
+        atomic_json(folder / "step.json", {"step": value, "started": time.time(), "timings": timings, "progress": {"downloading": 0.02, "separating": 0.08, "stems_ready": 0.8, "chords": 0.8, "lyrics": 0.9, "ready": 1.0}.get(value, 0)})
     def ffmpeg(source, target):
         subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(source), "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", str(target)], check=True)
     output = folder / "audio"
@@ -50,7 +50,7 @@ def main(folder):
         duration = float(json.loads(probe.stdout)["format"]["duration"])
         if not 0 < duration <= 600:
             raise RuntimeError("Skladba musí mít nejvýše 10 minut.")
-        inputs.update(source=source.name, duration=duration, title=info.get("title", "Skladba z odkazu"))
+        inputs.update(source=source.name, duration=duration, title=info.get("title", "Skladba z odkazu"), artist=info.get("artist") or info.get("uploader", ""))
         atomic_json(folder / "input.json", inputs)
     names = ["vocals", "drums", "bass", "guitar", "piano", "other"]
     separated = folder / "separated" / "htdemucs_6s" / "original"
@@ -72,7 +72,8 @@ def main(folder):
             for chunk in sf.blocks(separated / f"{name}.wav", blocksize=65536):
                 peak = max(peak, float(np.max(np.abs(chunk))))
         export_gain = min(1.0, 0.98 / peak)
-        for name in names:
+        for index, name in enumerate(names):
+            atomic_json(folder / "step.json", {"step": "separating", "progress": 0.75 + 0.05 * index / len(names)})
             decoded = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(separated / f"{name}.wav"), "-ac", "1", "-ar", "2000", "-f", "f32le", "-"], capture_output=True, check=True)
             samples = np.frombuffer(decoded.stdout, dtype=np.float32)
             peaks = np.array([np.max(np.abs(part)) if len(part) else 0 for part in np.array_split(samples, 110)])
@@ -111,6 +112,7 @@ def main(folder):
             model = WhisperModel(os.getenv("WHISPER_MODEL", "small"), device="cpu", compute_type="int8", cpu_threads=4, num_workers=1, download_root=os.getenv("HF_HOME", "/data/models"))
             generated, info = model.transcribe(str(separated / "vocals.wav"), language=None if inputs["language"] == "auto" else inputs["language"], word_timestamps=True, vad_filter=False, condition_on_previous_text=False, beam_size=5)
             for segment in generated:
+                atomic_json(folder / "step.json", {"step": "lyrics", "progress": 0.9 + 0.09 * min(1, segment.end / inputs["duration"])})
                 if segment.no_speech_prob > 0.8 or segment.avg_logprob < -1.5:
                     continue
                 segments.append({"start": segment.start, "end": segment.end, "text": segment.text.strip()})

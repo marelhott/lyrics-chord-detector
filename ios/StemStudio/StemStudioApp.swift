@@ -66,7 +66,7 @@ struct LibraryView: View {
                     }
                     ForEach(library.songs) { song in
                         Button { path.append(song.id) } label: {
-                            StudioCard { HStack(spacing: 16) { OrbArtwork().frame(width: 60, height: 60); VStack(alignment: .leading, spacing: 6) { Text(song.title).font(.system(size: 15, weight: .medium)).lineLimit(2).foregroundStyle(.white); Label(song.stepLabel, systemImage: song.processing ? "hourglass" : song.status == "ready" ? "waveform" : "exclamationmark.circle").font(.caption).foregroundStyle(song.status == "ready" ? Color.mint : StudioTheme.accent) }; Spacer(minLength: 0); Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(StudioTheme.secondary) } }
+                            StudioCard { HStack(spacing: 16) { AlbumCover(artwork: song.artwork).frame(width: 60, height: 60); VStack(alignment: .leading, spacing: 6) { Text(song.title).font(.system(size: 15, weight: .medium)).lineLimit(2).foregroundStyle(.white); Label(song.stepLabel, systemImage: song.processing ? "hourglass" : song.status == "ready" ? "waveform" : "exclamationmark.circle").font(.caption).foregroundStyle(song.status == "ready" ? Color.mint : StudioTheme.accent) }; Spacer(minLength: 0); Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(StudioTheme.secondary) } }
                         }.buttonStyle(.plain).accessibilityIdentifier("song.\(song.id)")
                     }
                 }.padding(22)

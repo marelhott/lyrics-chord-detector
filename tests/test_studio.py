@@ -89,3 +89,16 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/songs').json(),[])
 
 if __name__ == '__main__': unittest.main()
+
+    def test_actual_progress_and_cached_album(self):
+        self.login()
+        created = self.client.post('/api/songs', data={'url':'https://youtu.be/example'}).json()['id']
+        folder = self.app.DATA / created
+        self.app.update(created, status='running')
+        (folder/'step.json').write_text(json.dumps({'step':'separating','progress':0.42}))
+        artwork = {'url':'https://coverartarchive.org/example.jpg','album':'Album','artist':'Artist'}
+        (folder/'artwork.json').write_text(json.dumps({'artwork':artwork}))
+        detail = self.client.get('/api/songs/'+created).json()
+        self.assertEqual(detail['progress'],0.42)
+        self.assertEqual(detail['artwork'],artwork)
+        self.assertEqual(self.client.get('/api/songs').json()[0]['artwork'],artwork)

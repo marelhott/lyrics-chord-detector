@@ -2,6 +2,9 @@
 from pathlib import Path
 import sys
 import os
+import json
+import demucs.apply as demucs_apply
+from tqdm import tqdm as BaseProgress
 import torch
 import soundfile as sf
 from demucs.pretrained import get_model
@@ -10,6 +13,16 @@ from demucs.separate import load_track
 
 
 def separate(source, target):
+    class JobProgress(BaseProgress):
+        def __iter__(self):
+            total = len(self.iterable)
+            for index, item in enumerate(super().__iter__()):
+                yield item
+                path = source.parent / "step.json"
+                tmp = path.with_suffix(".tmp")
+                tmp.write_text(json.dumps({"step": "separating", "progress": 0.08 + 0.67 * (index + 1) / max(1, total)}))
+                tmp.replace(path)
+    demucs_apply.tqdm.tqdm = JobProgress
     torch.set_num_threads(max(1, min(8, int(os.getenv("STEM_CPU_THREADS", "8")))))
     model = get_model("htdemucs_6s").cpu().eval()
     wav = load_track(source, model.audio_channels, model.samplerate)
