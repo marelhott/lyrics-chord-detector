@@ -118,6 +118,11 @@ function Mixer({ song }) {
   </div>;
 }
 function ImportDialog({ onClose, onCreated }) {
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, []);
   const [mode, setMode] = useState('search');
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState('');
