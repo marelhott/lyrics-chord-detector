@@ -88,8 +88,6 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/songs',files={'file':('text.mp3',b'not audio','audio/mpeg')}).status_code,400)
         self.assertEqual(self.client.get('/api/songs').json(),[])
 
-if __name__ == '__main__': unittest.main()
-
     def test_actual_progress_and_cached_album(self):
         self.login()
         created = self.client.post('/api/songs', data={'url':'https://youtu.be/example'}).json()['id']
@@ -102,3 +100,5 @@ if __name__ == '__main__': unittest.main()
         self.assertEqual(detail['progress'],0.42)
         self.assertEqual(detail['artwork'],artwork)
         self.assertEqual(self.client.get('/api/songs').json()[0]['artwork'],artwork)
+
+if __name__ == '__main__': unittest.main()
