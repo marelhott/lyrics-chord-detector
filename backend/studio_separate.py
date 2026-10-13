@@ -1,6 +1,7 @@
 """Demucs 4.0 API export without per-stem clipping or normalization."""
 from pathlib import Path
 import sys
+import os
 import torch
 import soundfile as sf
 from demucs.pretrained import get_model
@@ -9,7 +10,7 @@ from demucs.separate import load_track
 
 
 def separate(source, target):
-    torch.set_num_threads(4)
+    torch.set_num_threads(max(1, min(8, int(os.getenv("STEM_CPU_THREADS", "8")))))
     model = get_model("htdemucs_6s").cpu().eval()
     wav = load_track(source, model.audio_channels, model.samplerate)
     ref = wav.mean(0)

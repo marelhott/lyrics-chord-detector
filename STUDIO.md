@@ -54,3 +54,5 @@ Nepodepsaný build slouží k ověření kompilace. Pro TestFlight je potřeba A
 Ověření 2026-10-13: cloudová skladba alt-J (3:46) zpřístupnila všechny audio stopy za 86,45 s, celý výsledek za 147,47 s. Separace/export 84,256 s, akordy 14,374 s, text 46,045 s. Tyto časy patří tomuto konkrétnímu vstupu, nejsou garancí jiné skladby. iOS test prošel se sedmi stopami při startu, seeku, změně rychlosti a pauze (rozdíl pozic pod 20 ms); živý UI test ověřil přihlášení, skutečnou knihovnu, stažení stop, play/pause a solo v simulátoru iPhone 17e. Fyzický iPhone a poslechová kvalita separace nejsou tímto testem potvrzené.
 
 Instalační balíček je dostupný za stávajícím přihlášením na `/api/app/ios`. Je nepodepsaný a musí jej podepsat SideStore/iloader s uživatelovým běžným Apple účtem. Postup je v `ios/INSTALL.md`.
+
+CPU benchmark na stejném 30s úseku, stejný model a parametry: zahřátý běh se 4 vlákny 7,695 s, 6 vlákny 6,707 s, 8 vlákny 5,709 s. Výchozí separace proto používá 8 vláken (lze snížit přes `STEM_CPU_THREADS`). Tento mikrobenchmark není celkový čas hotové skladby.
